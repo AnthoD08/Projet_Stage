@@ -1,10 +1,12 @@
-import { useState } from "react";
+import { useState, useContext } from "react";
 import { Dialog } from "@headlessui/react";
 import { X } from "lucide-react";
 import { db } from "../../config/firebase_config";
 import { collection, addDoc } from "firebase/firestore";
+import { UserContext } from "../Auth/UserContext";
 
 export default function ProjectWizard({ isOpen, onClose }) {
+  const { user } = useContext(UserContext);
   const [step, setStep] = useState(1);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -12,49 +14,67 @@ export default function ProjectWizard({ isOpen, onClose }) {
   const [endDate, setEndDate] = useState("");
   const [error, setError] = useState("");
 
-  // Validation & Navigation
   const nextStep = () => {
-    if (step === 1 && title.trim() === "")
+    if (step === 1 && title.trim() === "") {
       return setError("Veuillez renseigner le titre.");
-    if (step === 3 && (startDate === "" || endDate === ""))
-      return setError("Veuillez renseigner les dates.");
+    }
+    if (step === 3) {
+      if (startDate === "" || endDate === "") {
+        return setError("Veuillez renseigner les dates.");
+      }
+      if (new Date(startDate) > new Date(endDate)) {
+        return setError(
+          "La date de fin doit être postérieure à la date de début."
+        );
+      }
+    }
     setError("");
     setStep(step + 1);
   };
 
   const prevStep = () => setStep(step - 1);
 
-  // Enregistrement en base
   const handleSubmit = async () => {
+    if (!user) {
+      setError("Vous devez être connecté pour créer un projet.");
+      return;
+    }
+
     try {
       await addDoc(collection(db, "projects"), {
         title,
         description,
         startDate,
         endDate,
+        userId: user.uid,
+        createdAt: new Date(),
       });
-      onClose(); // Fermer le modal
+      setTitle("");
+      setDescription("");
+      setStartDate("");
+      setEndDate("");
+      onClose();
     } catch (error) {
-      setError("Erreur lors de l'ajout du projet.");
+      setError("Erreur lors de l'ajout du projet : " + error.message);
     }
   };
 
   return (
     <Dialog
       open={isOpen}
-      onClose={onClose}
+      onClose={() => {
+        onClose();
+      }}
       className="fixed inset-0 flex items-center justify-center bg-black/50"
     >
       <Dialog.Panel className="bg-white p-6 rounded-lg shadow-lg w-[400px]">
-        {/* Header */}
         <div className="flex justify-between items-center">
           <h2 className="text-lg font-semibold">Créer un projet</h2>
-          <button onClick={onClose}>
+          <button onClick={onClose} aria-label="Fermer">
             <X className="w-5 h-5 text-gray-500 hover:text-gray-700" />
           </button>
         </div>
 
-        {/* Étape 1 : Titre */}
         {step === 1 && (
           <div>
             <p className="mt-2 text-gray-600">
@@ -66,11 +86,11 @@ export default function ProjectWizard({ isOpen, onClose }) {
               placeholder="Nom du projet"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
+              aria-required="true"
             />
           </div>
         )}
 
-        {/* Étape 2 : Description */}
         {step === 2 && (
           <div>
             <p className="mt-2 text-gray-600">Ajoutez une description.</p>
@@ -79,11 +99,11 @@ export default function ProjectWizard({ isOpen, onClose }) {
               placeholder="Description du projet"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
+              aria-required="true"
             />
           </div>
         )}
 
-        {/* Étape 3 : Dates */}
         {step === 3 && (
           <div>
             <p className="mt-2 text-gray-600">Sélectionnez les dates.</p>
@@ -93,6 +113,7 @@ export default function ProjectWizard({ isOpen, onClose }) {
               className="w-full p-2 border rounded"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
+              aria-required="true"
             />
             <label className="block mt-3">Date de fin</label>
             <input
@@ -100,11 +121,11 @@ export default function ProjectWizard({ isOpen, onClose }) {
               className="w-full p-2 border rounded"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
+              aria-required="true"
             />
           </div>
         )}
 
-        {/* Étape 4 : Résumé */}
         {step === 4 && (
           <div>
             <p className="mt-2 text-gray-600">Résumé du projet :</p>
@@ -125,10 +146,8 @@ export default function ProjectWizard({ isOpen, onClose }) {
           </div>
         )}
 
-        {/* Message d'erreur */}
         {error && <p className="text-red-500 mt-3">{error}</p>}
 
-        {/* Boutons */}
         <div className="flex justify-between mt-6">
           {step > 1 && (
             <button

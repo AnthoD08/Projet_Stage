@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import { Link } from "react-router-dom";
 import { db } from "../../config/firebase_config";
-import { collection, query, onSnapshot, doc, where } from "firebase/firestore";
+import { collection, query, onSnapshot, where } from "firebase/firestore";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Table,
@@ -13,84 +13,37 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import dayjs from "dayjs";
+import { UserContext } from "../Auth/UserContext";
 
 const Dashboard = () => {
+  const { user } = useContext(UserContext); // Récupérer l'utilisateur connecté
   const [tasks, setTasks] = useState([]);
-  const [projects, setProjects] = useState([]);
   const [search, setSearch] = useState("");
 
-  // Récupération des tâches
+  // Récupération des tâches liées à l'utilisateur connecté
   useEffect(() => {
-    const q = query(collection(db, "tasks"));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const tasksData = snapshot.docs.map((doc) => ({
+    if (!user) return; // Ne pas exécuter si l'utilisateur n'est pas connecté
+
+    const tasksQuery = query(
+      collection(db, "tasks"),
+      where("userId", "==", user.uid) // Filtrer par userId
+    );
+
+    const unsubscribeTasks = onSnapshot(tasksQuery, (snapshot) => {
+      const taskList = snapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
       }));
-      setTasks(tasksData);
+      setTasks(taskList);
     });
-    return () => unsubscribe();
-  }, []);
 
-  // Récupération des projets
-  useEffect(() => {
-    const q = query(collection(db, "projects"));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const projectsData = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
-      setProjects(projectsData);
-    });
-    return () => unsubscribe();
-  }, []);
-
-  // Fonction pour obtenir le nom du projet
-  const getProjectName = (projectId) => {
-    const project = projects.find((p) => p.id === projectId);
-    return project ? project.title : "Inconnu";
-  };
-
-  const [sortBy, setSortBy] = useState("priority"); // Critère de tri par défaut
-  const [sortOrder, setSortOrder] = useState("asc"); // Ordre de tri par défaut
-
-  const sortTasks = (tasks) => {
-    return tasks.sort((a, b) => {
-      let comparison = 0;
-
-      // Comparaison en fonction du critère de tri
-      if (sortBy === "priority") {
-        const priorityOrder = { Haute: 3, Moyenne: 2, Basse: 1 };
-        comparison = priorityOrder[b.priority] - priorityOrder[a.priority];
-      } else if (sortBy === "dueDate") {
-        comparison = dayjs(a.dueDate).diff(dayjs(b.dueDate));
-      } else if (sortBy === "project") {
-        comparison = getProjectName(a.projectId).localeCompare(
-          getProjectName(b.projectId)
-        );
-      }
-
-      // Inverser l'ordre si nécessaire
-      return sortOrder === "asc" ? comparison : -comparison;
-    });
-  };
-
-  const handleSort = (criteria) => {
-    if (sortBy === criteria) {
-      // Inverser l'ordre si le critère est déjà sélectionné
-      setSortOrder(sortOrder === "asc" ? "desc" : "asc");
-    } else {
-      // Changer le critère de tri
-      setSortBy(criteria);
-      setSortOrder("asc"); // Réinitialiser l'ordre à ascendant
-    }
-  };
+    // Nettoyer l'abonnement Firestore quand le composant est démonté
+    return () => unsubscribeTasks();
+  }, [user]);
 
   return (
     <div className="p-6 min-h-screen">
-      <p>
-        C'est ici que vous retrouverez toutes vos tâches
-      </p>
+      <p>C'est ici que vous retrouverez toutes vos tâches</p>
 
       {/* Champ de recherche */}
       <div className="mt-4">
@@ -112,21 +65,15 @@ const Dashboard = () => {
               <TableHead>
                 <Checkbox />
               </TableHead>
-              <TableHead onClick={() => handleSort("title")}>Titre</TableHead>
-              <TableHead className="cursor-pointer"onClick={() => handleSort("priority")}>
-                Priorité
-              </TableHead>
-              <TableHead className="cursor-pointer"onClick={() => handleSort("project")}>
-                Projet
-              </TableHead>
-              <TableHead className="cursor-pointer"onClick={() => handleSort("dueDate")}>
-                Date limite
-              </TableHead>
+              <TableHead>Titre</TableHead>
+              <TableHead>Priorité</TableHead>
+              <TableHead>Projet</TableHead>
+              <TableHead>Date limite</TableHead>
               <TableHead>Jours restants</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {sortTasks(tasks)
+            {tasks
               .filter((task) =>
                 task.title.toLowerCase().includes(search.toLowerCase())
               )
@@ -148,7 +95,8 @@ const Dashboard = () => {
                     </TableCell>
                     <TableCell className="hover:underline">
                       <Link to={`/projets/${task.projectId}`}>
-                        {getProjectName(task.projectId)}
+                        {task.projectId}{" "}
+                        {/* Remplacez par le nom du projet si disponible */}
                       </Link>
                     </TableCell>
                     <TableCell>{dueDate.format("DD/MM/YYYY")}</TableCell>

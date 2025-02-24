@@ -86,13 +86,13 @@ export function NavUser() {
               <DropdownMenuGroup>
                 <DropdownMenuItem>
                   <BadgeCheck />
-                  Account
+                 Compte
                 </DropdownMenuItem>
               </DropdownMenuGroup>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={handleLogout}>
                 <LogOut />
-                Log out
+                Se déconnecter
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

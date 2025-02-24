@@ -6,7 +6,7 @@ import { UserProvider } from "./components/Auth/UserContext";
 
 function App() {
   return (
-    <UserProvider>
+    <UserProvider>  
       <Router>
         <Routes>
           <Route path="/" element={<HomePage />} />

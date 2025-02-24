@@ -1,7 +1,7 @@
 import { useState, useContext } from "react";
 import { auth } from "@/config/firebase_config";
 import { createUserWithEmailAndPassword } from "firebase/auth";
-import { UserContext } from "../Auth/UserContext";
+import { UserContext } from "./UserContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 

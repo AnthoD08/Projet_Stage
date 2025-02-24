@@ -1,29 +1,39 @@
-import { useEffect, useState } from "react";
+import React, { useEffect, useState, useContext } from "react";
 import { AppSidebar } from "@/components/Sidebar/AppSidebar";
-import Dashboard from "@/components/Dashboard/Dashboard";
+import {
+  SidebarProvider,
+  SidebarInset,
+  SidebarTrigger,
+} from "@/components/ui/sidebar";
+import { Separator } from "@/components/ui/separator";
 import {
   Breadcrumb,
   BreadcrumbItem,
   BreadcrumbSeparator,
   BreadcrumbList,
 } from "@/components/ui/breadcrumb";
-import { Separator } from "@/components/ui/separator";
-import {
-  SidebarInset,
-  SidebarProvider,
-  SidebarTrigger,
-} from "@/components/ui/sidebar";
 import { db } from "../config/firebase_config";
 import { collection, query, where, onSnapshot } from "firebase/firestore";
 import dayjs from "dayjs";
 import { PinIcon, FileCheck, Hourglass } from "lucide-react";
+import { UserContext } from "../components/Auth/UserContext"; // Importer le contexte utilisateur
+import Dashboard from "@/components/Dashboard/Dashboard";
 
 export default function HomePage() {
+  const { user } = useContext(UserContext); // Récupérer l'utilisateur connecté
   const [tasksToday, setTasksToday] = useState([]);
   const [tasksCompletedToday, setTasksCompletedToday] = useState([]);
   const [tasksOverdue, setTasksOverdue] = useState([]);
 
   useEffect(() => {
+    if (!user) {
+      // Si l'utilisateur n'est pas connecté, réinitialiser les tâches
+      setTasksToday([]);
+      setTasksCompletedToday([]);
+      setTasksOverdue([]);
+      return;
+    }
+
     const today = dayjs().format("YYYY-MM-DD");
     const tasksRef = collection(db, "tasks");
 
@@ -31,7 +41,8 @@ export default function HomePage() {
     const tasksQuery = query(
       tasksRef,
       where("dueDate", "==", today),
-      where("completed", "==", false)
+      where("completed", "==", false),
+      where("userId", "==", user.uid) // Filtrer par userId
     );
     const unsubscribeTasks = onSnapshot(tasksQuery, (snapshot) => {
       setTasksToday(
@@ -40,7 +51,11 @@ export default function HomePage() {
     });
 
     // 🔹 Écouter les tâches accomplies aujourd’hui en temps réel
-    const completedQuery = query(tasksRef, where("completedAt", "==", today));
+    const completedQuery = query(
+      tasksRef,
+      where("completedAt", "==", today),
+      where("userId", "==", user.uid) // Filtrer par userId
+    );
     const unsubscribeCompleted = onSnapshot(completedQuery, (snapshot) => {
       setTasksCompletedToday(
         snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
@@ -51,7 +66,8 @@ export default function HomePage() {
     const overdueQuery = query(
       tasksRef,
       where("dueDate", "<", today),
-      where("completed", "==", false)
+      where("completed", "==", false),
+      where("userId", "==", user.uid) // Filtrer par userId
     );
     const unsubscribeOverdue = onSnapshot(overdueQuery, (snapshot) => {
       setTasksOverdue(
@@ -59,13 +75,13 @@ export default function HomePage() {
       );
     });
 
-    //  Nettoyer les abonnements Firestore quand le composant est démonté
+    // Nettoyer les abonnements Firestore quand le composant est démonté
     return () => {
       unsubscribeTasks();
       unsubscribeCompleted();
       unsubscribeOverdue();
     };
-  }, []);
+  }, [user]);
 
   return (
     <SidebarProvider>
@@ -77,7 +93,9 @@ export default function HomePage() {
             <Separator orientation="vertical" className="mr-2 h-4" />
             <Breadcrumb>
               <BreadcrumbList>
-                <BreadcrumbItem className="hidden md:block">Dashboard</BreadcrumbItem>
+                <BreadcrumbItem className="hidden md:block">
+                  Dashboard
+                </BreadcrumbItem>
                 <BreadcrumbSeparator className="hidden md:block" />
                 <BreadcrumbItem></BreadcrumbItem>
               </BreadcrumbList>
@@ -101,7 +119,7 @@ export default function HomePage() {
             </div>
 
             {/*  Tâches en retard */}
-            <div className="aspect-video rounded-xl  bg-white shadow-md p-4 flex flex-col items-center justify-center">
+            <div className="aspect-video rounded-xl bg-white shadow-md p-4 flex flex-col items-center justify-center">
               <Hourglass color="#E17E23" className="mb-3"></Hourglass>
               <h2 className="text-sm font-light mb-2">En retard</h2>
               <p className="text-2xl font-bold">{tasksOverdue.length}</p>
@@ -110,7 +128,15 @@ export default function HomePage() {
 
           {/*  Ajout du Dashboard ici */}
           <div className="min-h-[100vh] flex-1 rounded-xl bg-muted/50 md:min-h-min">
-            <Dashboard />
+            {user ? (
+              <Dashboard userId={user.uid} />
+            ) : (
+              <div className="flex items-center justify-center h-full">
+                <h1 className="text-xl">
+                  Connectez-vous pour voir vos projets et tâches.
+                </h1>
+              </div>
+            )}
           </div>
         </div>
       </SidebarInset>
