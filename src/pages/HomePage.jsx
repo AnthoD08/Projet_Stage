@@ -16,18 +16,18 @@ import { db } from "../config/firebase_config";
 import { collection, query, where, onSnapshot } from "firebase/firestore";
 import dayjs from "dayjs";
 import { PinIcon, FileCheck, Hourglass } from "lucide-react";
-import { UserContext } from "../components/Auth/UserContext"; // Importer le contexte utilisateur
+import { UserContext } from "../components/Auth/UserContext";
 import Dashboard from "@/components/Dashboard/Dashboard";
 
 export default function HomePage() {
-  const { user } = useContext(UserContext); // Récupérer l'utilisateur connecté
+  const { user } = useContext(UserContext);
   const [tasksToday, setTasksToday] = useState([]);
   const [tasksCompletedToday, setTasksCompletedToday] = useState([]);
   const [tasksOverdue, setTasksOverdue] = useState([]);
+  const [userTasks, setUserTasks] = useState([]);
 
   useEffect(() => {
     if (!user) {
-      // Si l'utilisateur n'est pas connecté, réinitialiser les tâches
       setTasksToday([]);
       setTasksCompletedToday([]);
       setTasksOverdue([]);
@@ -35,59 +35,69 @@ export default function HomePage() {
     }
 
     const today = dayjs().format("YYYY-MM-DD");
-    const tasksRef = collection(db, "tasks");
+    const projectsRef = collection(db, "projects");
 
-    // 🔹 Écouter les tâches à faire aujourd’hui en temps réel
-    const tasksQuery = query(
-      tasksRef,
-      where("dueDate", "==", today),
-      where("completed", "==", false),
-      where("userId", "==", user.uid) // Filtrer par userId
-    );
-    const unsubscribeTasks = onSnapshot(tasksQuery, (snapshot) => {
-      setTasksToday(
-        snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
+    // 🔹 Récupérer les projets de l'utilisateur
+    const projectsQuery = query(projectsRef, where("userId", "==", user.uid));
+    const unsubscribeProjects = onSnapshot(projectsQuery, (snapshot) => {
+      const userProjects = snapshot.docs.map((doc) => doc.id); // Liste des projectId
+
+      if (userProjects.length === 0) {
+        setTasksToday([]);
+        setTasksCompletedToday([]);
+        setTasksOverdue([]);
+        return;
+      }
+
+      const tasksRef = collection(db, "tasks");
+
+      // 🔹 Vérifier si Firestore autorise "in" avec plusieurs projectId
+      if (userProjects.length > 10) {
+        console.warn("Trop de projets pour utiliser 'in', requête divisée.");
+        return; // Alternative : diviser la requête si besoin
+      }
+
+      const tasksQuery = query(
+        tasksRef,
+        where("projectId", "in", userProjects)
       );
+
+      const unsubscribeTasks = onSnapshot(tasksQuery, (snapshot) => {
+        const allTasks = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+
+        // Mettre à jour userTasks avec toutes les tâches récupérées
+        setUserTasks(allTasks);
+
+        // 🔹 Filtrage des tâches selon leur statut
+        const tasksForToday = allTasks.filter(
+          (task) => task.dueDate === today && !task.completed
+        );
+        const completedTasksToday = allTasks.filter(
+          (task) => task.completed === true
+        );
+        const overdueTasks = allTasks.filter(
+          (task) => task.dueDate < today && !task.completed
+        );
+
+        setTasksToday(tasksForToday);
+        setTasksCompletedToday(completedTasksToday);
+        setTasksOverdue(overdueTasks);
+      });
+
+      return () => unsubscribeTasks();
     });
 
-    // 🔹 Écouter les tâches accomplies aujourd’hui en temps réel
-    const completedQuery = query(
-      tasksRef,
-      where("completedAt", "==", today),
-      where("userId", "==", user.uid) // Filtrer par userId
-    );
-    const unsubscribeCompleted = onSnapshot(completedQuery, (snapshot) => {
-      setTasksCompletedToday(
-        snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
-      );
-    });
-
-    // 🔹 Écouter les tâches en retard en temps réel
-    const overdueQuery = query(
-      tasksRef,
-      where("dueDate", "<", today),
-      where("completed", "==", false),
-      where("userId", "==", user.uid) // Filtrer par userId
-    );
-    const unsubscribeOverdue = onSnapshot(overdueQuery, (snapshot) => {
-      setTasksOverdue(
-        snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
-      );
-    });
-
-    // Nettoyer les abonnements Firestore quand le composant est démonté
-    return () => {
-      unsubscribeTasks();
-      unsubscribeCompleted();
-      unsubscribeOverdue();
-    };
+    return () => unsubscribeProjects();
   }, [user]);
 
   return (
     <SidebarProvider>
       <AppSidebar />
       <SidebarInset>
-        <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-12">
+        <header className="flex h-16 shrink-0 items-center gap-2">
           <div className="flex items-center gap-2 px-4">
             <SidebarTrigger className="-ml-1" />
             <Separator orientation="vertical" className="mr-2 h-4" />
@@ -104,32 +114,26 @@ export default function HomePage() {
         </header>
         <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
           <div className="grid auto-rows-min gap-4 md:grid-cols-3">
-            {/*  Tâches à faire aujourd’hui */}
             <div className="aspect-video rounded-xl bg-white shadow-md p-4 flex flex-col items-center justify-center">
-              <PinIcon color="#4E78F2" className="mb-3"></PinIcon>
+              <PinIcon color="#4E78F2" className="mb-3" />
               <h2 className="text-sm font-light mb-2">À faire aujourd’hui</h2>
               <p className="text-2xl font-bold">{tasksToday.length}</p>
             </div>
-
-            {/*  Tâches accomplies aujourd’hui */}
             <div className="aspect-video rounded-xl bg-white shadow-md p-4 flex flex-col items-center justify-center">
-              <FileCheck color="#1D9F64" className="mb-3"></FileCheck>
+              <FileCheck color="#1D9F64" className="mb-3" />
               <h2 className="text-sm font-light mb-2">Tâches accomplies</h2>
               <p className="text-2xl font-bold">{tasksCompletedToday.length}</p>
             </div>
-
-            {/*  Tâches en retard */}
             <div className="aspect-video rounded-xl bg-white shadow-md p-4 flex flex-col items-center justify-center">
-              <Hourglass color="#E17E23" className="mb-3"></Hourglass>
+              <Hourglass color="#E17E23" className="mb-3" />
               <h2 className="text-sm font-light mb-2">En retard</h2>
               <p className="text-2xl font-bold">{tasksOverdue.length}</p>
             </div>
           </div>
 
-          {/*  Ajout du Dashboard ici */}
           <div className="min-h-[100vh] flex-1 rounded-xl bg-muted/50 md:min-h-min">
             {user ? (
-              <Dashboard userId={user.uid} />
+              <Dashboard userId={user.uid} tasks={userTasks} />
             ) : (
               <div className="flex items-center justify-center h-full">
                 <h1 className="text-xl">

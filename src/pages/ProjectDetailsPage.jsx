@@ -26,6 +26,12 @@ import { db } from "../config/firebase_config";
 import dayjs from "dayjs";
 import { UserContext } from "../components/Auth/UserContext";
 import { LoginForm } from "../components/Auth/LoginForm";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "../components/ui/dialog";
 
 export default function ProjectDetailsPage() {
   const { projectId } = useParams();

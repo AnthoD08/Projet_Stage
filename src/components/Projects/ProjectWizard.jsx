@@ -1,12 +1,17 @@
 import { useState, useContext } from "react";
+import { useNavigate } from "react-router-dom";
 import { Dialog } from "@headlessui/react";
 import { X } from "lucide-react";
 import { db } from "../../config/firebase_config";
 import { collection, addDoc } from "firebase/firestore";
 import { UserContext } from "../Auth/UserContext";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 
 export default function ProjectWizard({ isOpen, onClose }) {
   const { user } = useContext(UserContext);
+  const navigate = useNavigate();
   const [step, setStep] = useState(1);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -54,6 +59,7 @@ export default function ProjectWizard({ isOpen, onClose }) {
       setStartDate("");
       setEndDate("");
       onClose();
+      navigate("/projets"); // Rediriger vers la page des projets après la création du projet
     } catch (error) {
       setError("Erreur lors de l'ajout du projet : " + error.message);
     }
@@ -80,9 +86,9 @@ export default function ProjectWizard({ isOpen, onClose }) {
             <p className="mt-2 text-gray-600">
               Ajoutez un titre à votre projet.
             </p>
-            <input
+            <Input
               type="text"
-              className="w-full mt-3 p-2 border rounded"
+              className="w-full mt-3"
               placeholder="Nom du projet"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
@@ -94,8 +100,8 @@ export default function ProjectWizard({ isOpen, onClose }) {
         {step === 2 && (
           <div>
             <p className="mt-2 text-gray-600">Ajoutez une description.</p>
-            <textarea
-              className="w-full mt-3 p-2 border rounded"
+            <Textarea
+              className="w-full mt-3"
               placeholder="Description du projet"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
@@ -108,17 +114,17 @@ export default function ProjectWizard({ isOpen, onClose }) {
           <div>
             <p className="mt-2 text-gray-600">Sélectionnez les dates.</p>
             <label className="block mt-3">Date de début</label>
-            <input
+            <Input
               type="date"
-              className="w-full p-2 border rounded"
+              className="w-full"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
               aria-required="true"
             />
             <label className="block mt-3">Date de fin</label>
-            <input
+            <Input
               type="date"
-              className="w-full p-2 border rounded"
+              className="w-full"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
               aria-required="true"
@@ -150,27 +156,14 @@ export default function ProjectWizard({ isOpen, onClose }) {
 
         <div className="flex justify-between mt-6">
           {step > 1 && (
-            <button
-              className="bg-gray-300 px-4 py-2 rounded"
-              onClick={prevStep}
-            >
+            <Button variant="outline" onClick={prevStep}>
               Retour
-            </button>
+            </Button>
           )}
           {step < 4 ? (
-            <button
-              className="bg-blue-600 text-white px-4 py-2 rounded"
-              onClick={nextStep}
-            >
-              Suivant
-            </button>
+            <Button onClick={nextStep}>Suivant</Button>
           ) : (
-            <button
-              className="bg-green-600 text-white px-4 py-2 rounded"
-              onClick={handleSubmit}
-            >
-              Valider
-            </button>
+            <Button onClick={handleSubmit}>Valider</Button>
           )}
         </div>
       </Dialog.Panel>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from "react";
+import React, { useState, useEffect, useContext, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { db } from "../../config/firebase_config";
 import { collection, query, onSnapshot, where } from "firebase/firestore";
@@ -16,30 +16,116 @@ import dayjs from "dayjs";
 import { UserContext } from "../Auth/UserContext";
 
 const Dashboard = () => {
-  const { user } = useContext(UserContext); // Récupérer l'utilisateur connecté
+  const { user } = useContext(UserContext);
   const [tasks, setTasks] = useState([]);
+  const [projectsMap, setProjectsMap] = useState({});
   const [search, setSearch] = useState("");
 
-  // Récupération des tâches liées à l'utilisateur connecté
-  useEffect(() => {
-    if (!user) return; // Ne pas exécuter si l'utilisateur n'est pas connecté
+  // État de tri : key peut être "priority", "project", "dueDate"
+  const [sortConfig, setSortConfig] = useState({ key: null, direction: "asc" });
 
+  // Récupérer les projets de l'utilisateur et stocker un mapping id -> title
+  useEffect(() => {
+    if (!user) return;
+    const projectsQuery = query(
+      collection(db, "projects"),
+      where("userId", "==", user.uid)
+    );
+    const unsubscribeProjects = onSnapshot(projectsQuery, (snapshot) => {
+      const map = {};
+      snapshot.docs.forEach((doc) => {
+        // Utiliser le champ "title" pour le nom du projet
+        map[doc.id] = doc.data().title;
+      });
+      console.log("Mapping des projets :", map);
+      setProjectsMap(map);
+    });
+    return () => unsubscribeProjects();
+  }, [user]);
+
+  // Récupérer les tâches filtrées par projectId
+  useEffect(() => {
+    if (!user) return;
+    const projectIds = Object.keys(projectsMap);
+    if (projectIds.length === 0) return;
+    if (projectIds.length > 10) {
+      console.warn("Trop de projets pour utiliser l'opérateur 'in'.");
+      return;
+    }
     const tasksQuery = query(
       collection(db, "tasks"),
-      where("userId", "==", user.uid) // Filtrer par userId
+      where("projectId", "in", projectIds)
     );
-
     const unsubscribeTasks = onSnapshot(tasksQuery, (snapshot) => {
       const taskList = snapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
       }));
+      console.log("Tâches récupérées :", taskList);
       setTasks(taskList);
     });
-
-    // Nettoyer l'abonnement Firestore quand le composant est démonté
     return () => unsubscribeTasks();
-  }, [user]);
+  }, [user, projectsMap]);
+
+  // Fonction pour gérer le clic sur les colonnes de tri
+  const handleSort = (key) => {
+    setSortConfig((prev) => {
+      // Si on clique sur la même colonne, on inverse la direction
+      if (prev.key === key) {
+        return { key, direction: prev.direction === "asc" ? "desc" : "asc" };
+      }
+      // Sinon, on commence par ascendant
+      return { key, direction: "asc" };
+    });
+  };
+
+  // Mémo pour trier les tâches en fonction de sortConfig et du champ search
+  const sortedTasks = useMemo(() => {
+    let filteredTasks = tasks.filter((task) =>
+      task.title.toLowerCase().includes(search.toLowerCase())
+    );
+
+    if (!sortConfig.key) {
+      return filteredTasks;
+    }
+
+    return filteredTasks.sort((a, b) => {
+      let aValue, bValue;
+      switch (sortConfig.key) {
+        case "priority":
+          // On considère que la priorité est une chaîne de caractères
+          aValue = a.priority ? a.priority.toLowerCase() : "";
+          bValue = b.priority ? b.priority.toLowerCase() : "";
+          break;
+        case "project":
+          // On récupère le titre du projet depuis projectsMap
+          aValue = projectsMap[a.projectId]
+            ? projectsMap[a.projectId].toLowerCase()
+            : "";
+          bValue = projectsMap[b.projectId]
+            ? projectsMap[b.projectId].toLowerCase()
+            : "";
+          break;
+        case "dueDate":
+          aValue = a.dueDate ? dayjs(a.dueDate) : dayjs(0);
+          bValue = b.dueDate ? dayjs(b.dueDate) : dayjs(0);
+          break;
+        default:
+          return 0;
+      }
+
+      if (sortConfig.key === "dueDate") {
+        // Comparaison de dates
+        const diff = aValue.diff(bValue);
+        return sortConfig.direction === "asc" ? diff : -diff;
+      } else {
+        // Comparaison de chaînes
+        if (aValue < bValue) return sortConfig.direction === "asc" ? -1 : 1;
+        if (aValue > bValue) return sortConfig.direction === "asc" ? 1 : -1;
+        return 0;
+      }
+    });
+  }, [tasks, search, sortConfig, projectsMap]);
 
   return (
     <div className="p-6 min-h-screen">
@@ -66,60 +152,85 @@ const Dashboard = () => {
                 <Checkbox />
               </TableHead>
               <TableHead>Titre</TableHead>
-              <TableHead>Priorité</TableHead>
-              <TableHead>Projet</TableHead>
-              <TableHead>Date limite</TableHead>
+              <TableHead
+                onClick={() => handleSort("priority")}
+                style={{ cursor: "pointer" }}
+              >
+                Priorité{" "}
+                {sortConfig.key === "priority"
+                  ? sortConfig.direction === "asc"
+                    ? "↑"
+                    : "↓"
+                  : ""}
+              </TableHead>
+              <TableHead
+                onClick={() => handleSort("project")}
+                style={{ cursor: "pointer" }}
+              >
+                Projet{" "}
+                {sortConfig.key === "project"
+                  ? sortConfig.direction === "asc"
+                    ? "↑"
+                    : "↓"
+                  : ""}
+              </TableHead>
+              <TableHead
+                onClick={() => handleSort("dueDate")}
+                style={{ cursor: "pointer" }}
+              >
+                Date limite{" "}
+                {sortConfig.key === "dueDate"
+                  ? sortConfig.direction === "asc"
+                    ? "↑"
+                    : "↓"
+                  : ""}
+              </TableHead>
               <TableHead>Jours restants</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {tasks
-              .filter((task) =>
-                task.title.toLowerCase().includes(search.toLowerCase())
-              )
-              .map((task) => {
-                const dueDate = dayjs(task.dueDate);
-                const today = dayjs();
-                const daysRemaining = dueDate.diff(today, "day");
+            {sortedTasks.map((task) => {
+              const dueDate = dayjs(task.dueDate);
+              const today = dayjs();
+              const daysRemaining = dueDate.diff(today, "day");
 
-                return (
-                  <TableRow key={task.id}>
-                    <TableCell>
-                      <Checkbox checked={task.completed} />
-                    </TableCell>
-                    <TableCell className="font-medium">{task.title}</TableCell>
-                    <TableCell>
-                      <span className="px-2 py-1 bg-green-200 text-green-800 rounded">
-                        {task.priority || "Faible"}
-                      </span>
-                    </TableCell>
-                    <TableCell className="hover:underline">
-                      <Link to={`/projets/${task.projectId}`}>
-                        {task.projectId}{" "}
-                        {/* Remplacez par le nom du projet si disponible */}
-                      </Link>
-                    </TableCell>
-                    <TableCell>{dueDate.format("DD/MM/YYYY")}</TableCell>
-                    <TableCell>
-                      <span
-                        className={`px-2 py-1 rounded ${
-                          daysRemaining < 0
-                            ? "bg-red-200 text-red-800"
-                            : "bg-blue-200 text-blue-800"
-                        }`}
-                      >
-                        {daysRemaining >= 0 ? daysRemaining : "Expiré"}
-                      </span>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
+              return (
+                <TableRow key={task.id}>
+                  <TableCell>
+                    <Checkbox checked={task.completed} />
+                  </TableCell>
+                  <TableCell className="font-medium">{task.title}</TableCell>
+                  <TableCell>
+                    <span className="px-2 py-1 bg-green-200 text-green-800 rounded">
+                      {task.priority || "Faible"}
+                    </span>
+                  </TableCell>
+                  <TableCell className="hover:underline">
+                    <Link to={`/projets/${task.projectId}`}>
+                      {projectsMap[task.projectId] || task.projectId}
+                    </Link>
+                  </TableCell>
+                  <TableCell>{dueDate.format("DD/MM/YYYY")}</TableCell>
+                  <TableCell>
+                    <span
+                      className={`px-2 py-1 rounded ${
+                        daysRemaining < 0
+                          ? "bg-red-200 text-red-800"
+                          : "bg-blue-200 text-blue-800"
+                      }`}
+                    >
+                      {daysRemaining >= 0 ? daysRemaining : "Expiré"}
+                    </span>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
           </TableBody>
           <TableFooter>
             <TableRow>
               <TableCell colSpan={5}>Total</TableCell>
               <TableCell className="text-right">
-                {tasks.length} tâches
+                {sortedTasks.length} tâches
               </TableCell>
             </TableRow>
           </TableFooter>
