@@ -37,7 +37,7 @@ const Dashboard = () => {
         // Utiliser le champ "title" pour le nom du projet
         map[doc.id] = doc.data().title;
       });
-      console.log("Mapping des projets :", map);
+
       setProjectsMap(map);
     });
     return () => unsubscribeProjects();
@@ -49,7 +49,6 @@ const Dashboard = () => {
     const projectIds = Object.keys(projectsMap);
     if (projectIds.length === 0) return;
     if (projectIds.length > 10) {
-      console.warn("Trop de projets pour utiliser l'opérateur 'in'.");
       return;
     }
     const tasksQuery = query(
@@ -61,7 +60,7 @@ const Dashboard = () => {
         id: doc.id,
         ...doc.data(),
       }));
-      console.log("Tâches récupérées :", taskList);
+
       setTasks(taskList);
     });
     return () => unsubscribeTasks();
@@ -126,6 +125,18 @@ const Dashboard = () => {
       }
     });
   }, [tasks, search, sortConfig, projectsMap]);
+
+  const getPriorityColor = (priority) => {
+    switch (priority?.toLowerCase()) {
+      case "haute":
+        return "bg-red-200 text-red-800";
+      case "moyenne":
+        return "bg-orange-200 text-orange-800";
+      case "faible":
+      default:
+        return "bg-green-200 text-green-800";
+    }
+  };
 
   return (
     <div className="p-6 min-h-screen">
@@ -201,7 +212,11 @@ const Dashboard = () => {
                   </TableCell>
                   <TableCell className="font-medium">{task.title}</TableCell>
                   <TableCell>
-                    <span className="px-2 py-1 bg-green-200 text-green-800 rounded">
+                    <span
+                      className={`px-2 py-1 rounded ${getPriorityColor(
+                        task.priority
+                      )}`}
+                    >
                       {task.priority || "Faible"}
                     </span>
                   </TableCell>

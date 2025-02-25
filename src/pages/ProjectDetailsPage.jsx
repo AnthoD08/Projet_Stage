@@ -132,76 +132,83 @@ export default function ProjectDetailsPage() {
         )}
 
         <div className="p-6 relative">
-          <div className="grid grid-cols-3 gap-4">
-            <div className="col-span-2">
+          {/* Grid container avec gestion responsive */}
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+            {/* Zone principale (formulaire) - prend 3 colonnes sur grand écran */}
+            <div className="lg:col-span-3">
               <DashboardProjectDetails projectId={projectId} />
             </div>
-            <div className="col-span-1"></div>
-          </div>
 
-          <div className="fixed top-20 right-4 w-64 z-50 border-l border-gray-300 pl-4">
-            <div className="flex flex-col items-center space-y-4">
-              <h2 className="text-2xl font-bold">Statistiques du projet</h2>
-              {project ? (
-                <div className="flex flex-col items-center space-y-4 w-full">
-                  <div className="p-4 border rounded-lg shadow-sm text-sm w-full bg-white">
-                    <h3 className="font-semibold">Deadline</h3>
-                    <p className="text-xs text-gray-500">
-                      Jours restants avant la deadline du projet
-                    </p>
-                    <div className="mt-2 flex flex-col items-center">
-                      {project.endDate ? (
-                        <>
-                          <div className="text-3xl font-bold text-blue-600">
-                            {dayjs(project.endDate).diff(dayjs(), "day")}
-                          </div>
-                          <p className="text-gray-600">Jours</p>
-                        </>
-                      ) : (
-                        <p>Non défini</p>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="p-4 border rounded-lg shadow-sm text-sm w-full bg-white">
-                    <h3 className="font-semibold">Progression</h3>
-                    <p className="text-xs text-gray-500">
-                      Taux d’accomplissement des tâches du projet
-                    </p>
-                    <div className="mt-2 flex flex-col items-center">
-                      <div className="text-3xl font-bold">
-                        {progressPercent}%
-                      </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2 mt-1">
-                        <div
-                          className="bg-blue-600 h-2 rounded-full"
-                          style={{ width: `${progressPercent}%` }}
-                        ></div>
+            {/* Zone des statistiques - prend 1 colonne sur grand écran */}
+            <div className="lg:col-span-1">
+              <div className="sticky top-6">
+                <h2 className="text-2xl font-bold mb-4">
+                  Statistiques du projet
+                </h2>
+                {project ? (
+                  <div className="space-y-4">
+                    {/* Carte Deadline */}
+                    <div className="p-4 border rounded-lg shadow-sm text-sm w-full bg-white">
+                      <h3 className="font-semibold">Deadline</h3>
+                      <p className="text-xs text-gray-500">
+                        Jours restants avant la deadline du projet
+                      </p>
+                      <div className="mt-2 flex flex-col items-center">
+                        {project.endDate ? (
+                          <>
+                            <div className="text-3xl font-bold text-blue-600">
+                              {dayjs(project.endDate).diff(dayjs(), "day")}
+                            </div>
+                            <p className="text-gray-600">Jours</p>
+                          </>
+                        ) : (
+                          <p>Non défini</p>
+                        )}
                       </div>
                     </div>
-                  </div>
 
-                  <div className="p-4 border rounded-lg shadow-sm text-sm w-full bg-white">
-                    <h3 className="font-semibold">Retard</h3>
-                    <p className="text-xs text-gray-500">
-                      Nombre de tâches ayant dépassé la date limite
-                    </p>
-                    <div className="mt-2 flex justify-center items-center">
-                      {tasksInDelay > 0 ? (
-                        <span className="text-red-500 text-3xl font-bold">
-                          {tasksInDelay}
-                        </span>
-                      ) : (
-                        <div className="w-10 h-10 flex items-center justify-center bg-green-100 rounded-full">
-                          <span className="text-green-600 text-2xl">✔</span>
+                    {/* Carte Progression */}
+                    <div className="p-4 border rounded-lg shadow-sm text-sm w-full bg-white">
+                      <h3 className="font-semibold">Progression</h3>
+                      <p className="text-xs text-gray-500">
+                        Taux d'accomplissement des tâches du projet
+                      </p>
+                      <div className="mt-2 flex flex-col items-center">
+                        <div className="text-3xl font-bold">
+                          {progressPercent}%
                         </div>
-                      )}
+                        <div className="w-full bg-gray-200 rounded-full h-2 mt-1">
+                          <div
+                            className="bg-blue-600 h-2 rounded-full"
+                            style={{ width: `${progressPercent}%` }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Carte Retard */}
+                    <div className="p-4 border rounded-lg shadow-sm text-sm w-full bg-white">
+                      <h3 className="font-semibold">Retard</h3>
+                      <p className="text-xs text-gray-500">
+                        Nombre de tâches ayant dépassé la date limite
+                      </p>
+                      <div className="mt-2 flex justify-center items-center">
+                        {tasksInDelay > 0 ? (
+                          <span className="text-red-500 text-3xl font-bold">
+                            {tasksInDelay}
+                          </span>
+                        ) : (
+                          <div className="w-10 h-10 flex items-center justify-center bg-green-100 rounded-full">
+                            <span className="text-green-600 text-2xl">✔</span>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ) : (
-                <p>Chargement des statistiques...</p>
-              )}
+                ) : (
+                  <p>Chargement des statistiques...</p>
+                )}
+              </div>
             </div>
           </div>
         </div>

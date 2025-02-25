@@ -3,6 +3,7 @@ import HomePage from "./pages/HomePage";
 import ProjectsPage from "./pages/Projects";
 import ProjectDetailsPage from "./pages/ProjectDetailsPage";
 import { UserProvider } from "./components/Auth/UserContext";
+import ProfilePage from "./pages/ProfilPage";
 
 function App() {
   return (
@@ -13,6 +14,7 @@ function App() {
           <Route path="accueil" element={<HomePage />} />
           <Route path="projets" element={<ProjectsPage />} />
           <Route path="projets/:projectId" element={<ProjectDetailsPage />} />
+          <Route path="profil" element={<ProfilePage />} />
         </Routes>
       </Router>
     </UserProvider>

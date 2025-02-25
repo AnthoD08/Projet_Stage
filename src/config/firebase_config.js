@@ -2,12 +2,13 @@
 import { initializeApp } from "firebase/app";
 import { getFirestore, collection, addDoc } from "firebase/firestore"; // Importer Firestore et les fonctions nécessaires
 import { getAuth } from "firebase/auth";
+import { getStorage } from "firebase/storage";
 
 const firebaseConfig = {
   apiKey: "AIzaSyD69hkIRNktCbcsSRI55Ua3X-JHuTegXKE",
   authDomain: "taskflow-app-487bb.firebaseapp.com",
   projectId: "taskflow-app-487bb",
-  storageBucket: "taskflow-app-487bb.appspot.com",
+  storageBucket: "taskflow-app-487bb.appspot.com", 
   messagingSenderId: "333249712676",
   appId: "1:333249712676:web:19ade0bf956d6230a3beb1",
 };
@@ -15,6 +16,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
+const storage = getStorage(app);
 
 // Fonction pour ajouter un projet
 const addProject = async (projectName) => {
@@ -33,4 +35,4 @@ const addProject = async (projectName) => {
   }
 };
 
-export { auth, db, addProject, app };
+export { auth, db, storage, addProject, app };

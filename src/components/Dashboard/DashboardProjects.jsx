@@ -214,15 +214,15 @@ const Dashboard = () => {
                 </TableCell>
                 <TableCell>
                   <span
-                    className={`px-2 py-1 rounded-full text-white ${
-                      task.priority === "Haute"
-                        ? "bg-red-500"
-                        : task.priority === "Moyenne"
-                        ? "bg-yellow-500"
-                        : "bg-green-500"
+                    className={`px-2 py-1 rounded ${
+                      task.priority?.toLowerCase() === "haute"
+                        ? "bg-red-200 text-red-800"
+                        : task.priority?.toLowerCase() === "moyenne"
+                        ? "bg-orange-200 text-orange-800"
+                        : "bg-green-200 text-green-800"
                     }`}
                   >
-                    {task.priority}
+                    {task.priority || "Faible"}
                   </span>
                 </TableCell>
                 <TableCell>
@@ -252,6 +252,7 @@ const Dashboard = () => {
                         <AlertDialogCancel>Annuler</AlertDialogCancel>
                         <AlertDialogAction
                           onClick={() => handleDeleteTask(task.id)}
+                          className="bg-red-500 hover:bg-red-600"
                         >
                           Supprimer
                         </AlertDialogAction>

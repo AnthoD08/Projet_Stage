@@ -1,11 +1,5 @@
 import { Link } from "react-router-dom";
-import {
-  AudioWaveform,
-  GalleryVerticalEnd,
-  Command,
-  SquareTerminal,
-  FilePen,
-} from "lucide-react";
+import { AudioWaveform, SquareTerminal, FilePen } from "lucide-react";
 import { NavUser } from "../Sidebar/NavUser";
 import { TeamSwitcher } from "@/components/Sidebar/TeamSwitch";
 import {
@@ -24,11 +18,6 @@ import {
 
 export function AppSidebar(props) {
   const data = {
-    user: {
-      name: "Anthony",
-      email: "anthony-delmotte@hotmail.fr",
-      avatar: "/avatars/shadcn.jpg",
-    },
     teams: [
       {
         name: "Task Manager",
@@ -39,7 +28,7 @@ export function AppSidebar(props) {
     navMain: [
       {
         title: "Dashboard",
-        url: "/accueil", 
+        url: "/accueil",
         icon: SquareTerminal,
       },
       {

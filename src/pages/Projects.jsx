@@ -1,4 +1,4 @@
-import { useState, useEffect, useContext } from "react"; // Assurez-vous d'importer useContext
+import { useState, useEffect, useContext } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import { db } from "../config/firebase_config";
 import { Link, useNavigate } from "react-router-dom";
@@ -12,7 +12,7 @@ import {
   query,
   doc,
 } from "firebase/firestore";
-import { UserContext } from "../components/Auth/UserContext"; // Import du contexte utilisateur
+import { UserContext } from "../components/Auth/UserContext";
 import { AppSidebar } from "@/components/Sidebar/AppSidebar";
 import {
   SidebarProvider,
@@ -32,19 +32,33 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
 import { LoginForm } from "../components/Auth/LoginForm";
+import { RegisterForm } from "../components/Auth/RegisterForm";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export default function ProjectsPage() {
-  const { user, logout } = useContext(UserContext); // avoir une fonction de déconnexion
-  const navigate = useNavigate(); // Hook pour la navigation
+  const { user, logout } = useContext(UserContext);
+  const navigate = useNavigate();
   const [projects, setProjects] = useState([]);
   const [newProjectTitle, setNewProjectTitle] = useState("");
   const [error, setError] = useState("");
   const [isWizardOpen, setIsWizardOpen] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [isLoggingOut, setIsLoggingOut] = useState(false); // État pour gérer la déconnexion
-  const [showLoginForm, setShowLoginForm] = useState(false); // État pour afficher le formulaire de connexion
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [projectToDelete, setProjectToDelete] = useState(null);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+
+  // Nouvel état pour gérer le mode d'authentification : "login" ou "register"
+  const [authMode, setAuthMode] = useState("login");
 
   // Rediriger l'utilisateur vers la page de connexion s'il n'est pas connecté
   useEffect(() => {
@@ -112,15 +126,17 @@ export default function ProjectsPage() {
 
   // Supprimer un projet
   const handleDeleteProject = async (projectId) => {
-    const confirmDelete = window.confirm(
-      "Voulez-vous vraiment supprimer ce projet ?"
-    );
-    if (!confirmDelete) return;
+    setProjectToDelete(projectId);
+    setShowDeleteDialog(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!projectToDelete) return;
 
     try {
       const tasksQuery = query(
         collection(db, "tasks"),
-        where("projectId", "==", projectId)
+        where("projectId", "==", projectToDelete)
       );
       const tasksSnapshot = await getDocs(tasksQuery);
       const tasksToDelete = tasksSnapshot.docs.map((doc) => doc.id);
@@ -130,24 +146,27 @@ export default function ProjectsPage() {
       );
       await Promise.all(deleteTasksPromises);
 
-      await deleteDoc(doc(db, "projects", projectId));
+      await deleteDoc(doc(db, "projects", projectToDelete));
       setProjects((prevProjects) =>
-        prevProjects.filter((p) => p.id !== projectId)
+        prevProjects.filter((p) => p.id !== projectToDelete)
       );
     } catch (error) {
       console.error("Erreur lors de la suppression :", error);
+    } finally {
+      setShowDeleteDialog(false);
+      setProjectToDelete(null);
     }
   };
 
   // Fonction de déconnexion
   const handleLogout = async () => {
-    setIsLoggingOut(true); // Mettre à jour l'état de déconnexion
-    await logout(); // Appeler la fonction de déconnexion
+    setIsLoggingOut(true);
+    await logout();
     setProjects([]);
-    navigate("/accueil"); // Rediriger vers la page d'accueil après la déconnexion
+    navigate("/accueil");
   };
 
-  // Si l'utilisateur n'est pas connecté, afficher la boîte de dialogue
+  // Si l'utilisateur n'est pas connecté, afficher la boîte de dialogue d'authentification
   if (!user) {
     return (
       <Dialog
@@ -155,24 +174,32 @@ export default function ProjectsPage() {
         onOpenChange={(isOpen) => {
           setIsDialogOpen(isOpen);
           if (!isOpen) {
-            navigate("/accueil"); // Rediriger vers la page d'accueil
+            navigate("/accueil");
           }
         }}
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Connexion requise</DialogTitle>
+            <DialogTitle>
+              {authMode === "login"
+                ? "Connexion requise"
+                : "Inscription requise"}
+            </DialogTitle>
           </DialogHeader>
-          <LoginForm />
+          {authMode === "login" ? (
+            <LoginForm switchMode={() => setAuthMode("register")} />
+          ) : (
+            <RegisterForm switchMode={() => setAuthMode("login")} />
+          )}
         </DialogContent>
       </Dialog>
     );
   }
 
-  // Fonction pour gérer la fermeture de la boîte de dialogue
+  // Fonction pour gérer la fermeture de la boîte de dialogue du wizard
   const handleCloseWizard = () => {
     setIsWizardOpen(false);
-    navigate("/"); // Rediriger vers la page d'accueil
+    navigate("/");
   };
 
   return (
@@ -195,7 +222,7 @@ export default function ProjectsPage() {
           <div className="flex justify-between items-center">
             <h1 className="text-2xl font-semibold">Projets</h1>
             <button
-              className="bg-blue-500 text-white px-4 py-2 rounded flex items-center hover:bg-blue-700"
+              className="bg-stone-950 text-white px-4 py-2 rounded flex items-center hover:bg-stone-800"
               onClick={() => setIsWizardOpen(true)}
             >
               <Plus className="mr-2" />
@@ -235,10 +262,29 @@ export default function ProjectsPage() {
 
           {error && <p className="text-red-500 mt-4">{error}</p>}
         </div>
-        <ProjectWizard
-          isOpen={isWizardOpen}
-          onClose={handleCloseWizard} // Utiliser la nouvelle fonction pour gérer la fermeture
-        />
+        <ProjectWizard isOpen={isWizardOpen} onClose={handleCloseWizard} />
+        <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Êtes-vous sûr ?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Cette action ne peut pas être annulée. Cela supprimera
+                définitivement le projet et toutes les tâches associées.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => setShowDeleteDialog(false)}>
+                Annuler
+              </AlertDialogCancel>
+              <AlertDialogAction
+                onClick={confirmDelete}
+                className="bg-red-500 hover:bg-red-600"
+              >
+                Supprimer
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </SidebarInset>
     </SidebarProvider>
   );
