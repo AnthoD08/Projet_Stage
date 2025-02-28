@@ -218,19 +218,8 @@ export default function ProjectsPage() {
           </Breadcrumb>
         </header>
 
-        <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
-          <div className="flex justify-between items-center">
-            <h1 className="text-2xl font-semibold">Projets</h1>
-            <button
-              className="bg-stone-950 text-white px-4 py-2 rounded flex items-center hover:bg-stone-800"
-              onClick={() => setIsWizardOpen(true)}
-            >
-              <Plus className="mr-2" />
-              Nouveau projet
-            </button>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="flex flex-1 flex-col gap-4 p-4 md:p-4 pt-0">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 px-2 md:px-4">
             {projects.map((project) => (
               <div
                 key={project.id}
