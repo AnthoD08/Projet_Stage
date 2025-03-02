@@ -44,6 +44,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
 
 export default function ProjectsPage() {
   const { user, logout } = useContext(UserContext);
@@ -216,30 +217,35 @@ export default function ProjectsPage() {
               </BreadcrumbItem>
             </BreadcrumbList>
           </Breadcrumb>
+          <Button onClick={() => setIsWizardOpen(true)} className="ml-auto">
+            <Plus className="mr-2 h-4 w-4" />
+            Nouveau Projet
+          </Button>
         </header>
 
         <div className="flex flex-1 flex-col gap-4 p-4 md:p-4 pt-0">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 px-2 md:px-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 px-2 md:px-4">
             {projects.map((project) => (
               <div
                 key={project.id}
-                className="border rounded-lg p-4 shadow-sm bg-white flex flex-col justify-between hover:bg-stone-100 relative"
+                className="border rounded-lg p-4 shadow-sm bg-white flex flex-col justify-between hover:bg-stone-100 relative max-w-sm"
               >
                 <Link to={`/projets/${project.id}`} className="flex-grow">
                   <h2 className="text-lg font-semibold mb-3">
                     {project.title}
                   </h2>
-                  <p className="text-gray-500 text-sm">
-                    Début:{" "}
-                    {project.startDate
-                      ? new Date(project.startDate).toLocaleDateString()
-                      : "Non défini"}
-                  </p>
-                  <p className="text-gray-500 text-sm">
-                    Fin :{" "}
-                    {project.endDate
-                      ? new Date(project.endDate).toLocaleDateString()
-                      : "Non défini"}
+                  <p className="text-sm">
+                    <span className="bg-green-200 text-green-800 px-2 py-1 rounded">
+                      {project.startDate && project.endDate
+                        ? `${new Date(project.startDate).toLocaleDateString(
+                            "fr-FR",
+                            { day: "numeric", month: "short" }
+                          )} - ${new Date(project.endDate).toLocaleDateString(
+                            "fr-FR",
+                            { day: "numeric", month: "short" }
+                          )}`
+                        : "Dates non définies"}
+                    </span>
                   </p>
                 </Link>
                 <button onClick={() => handleDeleteProject(project.id)}>
