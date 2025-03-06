@@ -117,20 +117,29 @@ export default function ProfilePage() {
 
   return (
     <SidebarProvider>
-      <AppSidebar className="hidden md:block" />
-      <SidebarInset className="w-full min-h-[100dvh]">
-        <header className="flex h-16 items-center gap-2 px-4">
-          <SidebarTrigger className="block md:hidden" />
-          <Separator orientation="vertical" className="mr-2 h-4" />
-          <Breadcrumb>
-            <BreadcrumbList>
-              <BreadcrumbItem>Mon Profil</BreadcrumbItem>
-            </BreadcrumbList>
-          </Breadcrumb>
-        </header>
+      <AppSidebar />
+      <SidebarInset>
+        <div className="flex flex-col px-6 py-4">
+          <h1 className="text-2xl font-bold">Mon Profil</h1>
+          <Separator className="my-4" />
 
-        <div className="container mx-auto px-4 py-6">
-          <div className="max-w-2xl mx-auto bg-white rounded-lg shadow-md p-6">
+          <Card className="mb-8 p-6 flex items-center space-x-4">
+            <Avatar className="h-20 w-20">
+              <AvatarImage
+                src={photoURL || user.photoURL}
+                alt={user.displayName}
+              />
+              <AvatarFallback>{user.displayName?.[0] || "U"}</AvatarFallback>
+            </Avatar>
+            <div>
+              <h2 className="text-xl font-semibold">
+                {user.displayName || "Utilisateur"}
+              </h2>
+              <p className="text-gray-500">{user.email}</p>
+            </div>
+          </Card>
+
+          <div className="max-w-2xl">
             {error && <p className="text-red-500 mb-4">{error}</p>}
             {success && (
               <p className="text-green-500 mb-4">Profil mis à jour !</p>
