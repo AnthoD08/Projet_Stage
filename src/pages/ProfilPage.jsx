@@ -1,8 +1,9 @@
+// Importation des dépendances nécessaires
 import { useContext, useState, useRef } from "react";
 import { UserContext } from "../components/Auth/UserContext";
-import { auth, storage } from "@/config/firebase_config"; // Ajouter storage
+import { auth, storage } from "@/config/firebase_config"; // Importation de Firebase Auth et Storage
 import { updateProfile } from "firebase/auth";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage"; // Ajouter ces imports
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage"; // Importation des fonctions de gestion du stockage
 import { Navigate } from "react-router-dom";
 import { AppSidebar } from "@/components/Sidebar/AppSidebar";
 import {
@@ -23,7 +24,10 @@ import {
 } from "@/components/ui/breadcrumb";
 
 export default function ProfilePage() {
+  // Récupération du contexte utilisateur pour l'authentification
   const { user } = useContext(UserContext);
+
+  // Initialisation des états pour gérer les informations du profil
   const [displayName, setDisplayName] = useState(user?.displayName || "");
   const [photoURL, setPhotoURL] = useState(user?.photoURL || "");
   const [error, setError] = useState("");
@@ -31,7 +35,7 @@ export default function ProfilePage() {
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef(null);
 
-  // Ajout de la fonction manquante handleUpdateProfile
+  // Fonction pour mettre à jour le profil utilisateur
   const handleUpdateProfile = async (e) => {
     e.preventDefault();
     setError("");
@@ -43,6 +47,7 @@ export default function ProfilePage() {
     }
 
     try {
+      // Mise à jour du profil utilisateur avec les nouvelles informations
       await updateProfile(auth.currentUser, {
         displayName,
         photoURL,
@@ -54,10 +59,12 @@ export default function ProfilePage() {
     }
   };
 
+  // Fonction pour déclencher le clic sur l'input de fichier
   const handleImageClick = () => {
     fileInputRef.current?.click();
   };
 
+  // Fonction pour gérer le téléchargement de l'image de profil
   const handleImageUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -66,23 +73,23 @@ export default function ProfilePage() {
       setIsUploading(true);
       setError("");
 
-      // Créer une référence unique pour l'image avec un timestamp pour éviter les doublons
+      // Créer une référence unique pour l'image avec un timestamp
       const timestamp = new Date().getTime();
       const imageRef = ref(
         storage,
         `profile-images/${user.uid}/${timestamp}_${file.name}`
       );
 
-      // Uploader l'image
+      // Uploader l'image dans Firebase Storage
       await uploadBytes(imageRef, file);
 
-      // Obtenir l'URL de téléchargement
+      // Obtenir l'URL de téléchargement de l'image
       const downloadURL = await getDownloadURL(imageRef);
 
       // Mettre à jour l'URL de la photo dans le state local
       setPhotoURL(downloadURL);
 
-      // Mettre à jour le profil utilisateur
+      // Mettre à jour le profil utilisateur avec la nouvelle URL de la photo
       await updateProfile(auth.currentUser, {
         photoURL: downloadURL,
       });
@@ -103,6 +110,7 @@ export default function ProfilePage() {
     }
   };
 
+  // Redirection si aucun utilisateur n'est connecté
   if (!user) {
     return <Navigate to="/accueil" />;
   }
@@ -128,6 +136,7 @@ export default function ProfilePage() {
               <p className="text-green-500 mb-4">Profil mis à jour !</p>
             )}
 
+            {/* Formulaire de mise à jour du profil */}
             <form onSubmit={handleUpdateProfile} className="space-y-8">
               <div className="space-y-6">
                 <div>

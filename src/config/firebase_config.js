@@ -13,26 +13,32 @@ const firebaseConfig = {
   appId: "1:333249712676:web:19ade0bf956d6230a3beb1",
 };
 
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-const auth = getAuth(app);
-const storage = getStorage(app);
+// Configuration des services Firebase
+const app = initializeApp(firebaseConfig);  // Initialise l'application Firebase
+const db = getFirestore(app);              // Instance de la base de données Firestore
+const auth = getAuth(app);                 // Instance du service d'authentification
+const storage = getStorage(app);           // Instance du service de stockage
 
-// Fonction pour ajouter un projet
+// Fonction asynchrone pour ajouter un nouveau projet dans Firestore
 const addProject = async (projectName) => {
+  // Vérifie si le nom du projet n'est pas vide après suppression des espaces
   if (!projectName.trim()) return;
 
   try {
+    // Crée ou met à jour un document dans la collection "projects"
     await setDoc(
+      // Définit l'ID du document en formatant le nom du projet
       doc(db, "projects", projectName.toLowerCase().replace(/\s+/g, "-")),
       {
-        name: projectName,
-        createdAt: new Date().toISOString(),
+        name: projectName,                    // Stocke le nom original du projet
+        createdAt: new Date().toISOString(), // Ajoute la date de création
       }
     );
   } catch (error) {
+    // Gestion des erreurs avec affichage dans la console
     console.error("Erreur lors de l'ajout du projet :", error);
   }
 };
 
+// Exporte les services et fonctions pour utilisation dans d'autres fichiers
 export { auth, db, storage, addProject, app };

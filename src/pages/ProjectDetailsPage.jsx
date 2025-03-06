@@ -1,3 +1,4 @@
+// Importation des dépendances nécessaires
 import React, { useEffect, useState, useContext } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import {
@@ -34,13 +35,17 @@ import {
 } from "../components/ui/dialog";
 
 export default function ProjectDetailsPage() {
+  // Récupération des paramètres de l'URL et du contexte utilisateur
   const { projectId } = useParams();
   const { user } = useContext(UserContext);
   const navigate = useNavigate();
+
+  // Initialisation des états pour gérer les données du projet et des tâches
   const [project, setProject] = useState(null);
   const [tasks, setTasks] = useState([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
+  // Effect pour récupérer les détails du projet
   useEffect(() => {
     if (!user) {
       setIsDialogOpen(true);
@@ -57,6 +62,7 @@ export default function ProjectDetailsPage() {
     fetchProject();
   }, [projectId, user]);
 
+  // Effect pour récupérer les tâches associées au projet
   useEffect(() => {
     if (!projectId) return;
     const q = query(
@@ -73,6 +79,7 @@ export default function ProjectDetailsPage() {
     return () => unsubscribe();
   }, [projectId]);
 
+  // Calcul des statistiques du projet
   const totalTasks = tasks.length;
   const completedTasks = tasks.filter((task) => task.completed).length;
   const progressPercent =
@@ -86,6 +93,7 @@ export default function ProjectDetailsPage() {
     );
   }).length;
 
+  // Affichage du dialogue de connexion si l'utilisateur n'est pas connecté
   if (!user) {
     return (
       <Dialog
@@ -125,6 +133,7 @@ export default function ProjectDetailsPage() {
           </Breadcrumb>
         </header>
 
+        {/* Affichage des détails du projet */}
         {project && (
           <div className="p-6">
             <h1 className="text-3xl font-bold mb-4">{project.title}</h1>

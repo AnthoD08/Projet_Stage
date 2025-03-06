@@ -76,11 +76,15 @@ export default function ProjectsPage() {
       collection(db, "projects"),
       where("userId", "==", user.uid)
     );
+    // Création d'un écouteur en temps réel sur la collection de projets
     const unsubscribe = onSnapshot(q, (snapshot) => {
+      // Transformation des documents Firestore en objets JavaScript
       const projectList = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
+        id: doc.id,           // Récupération de l'ID unique du document
+        ...doc.data(),        // Déstructuration des données du document (titre, dates, etc.)
       }));
+      
+      // Mise à jour de l'état React avec la nouvelle liste de projets
       setProjects(projectList);
     });
 
