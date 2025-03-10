@@ -1,5 +1,5 @@
 // Importation des dépendances nécessaires
-import React, { useEffect, useState, useContext } from "react";
+import { useEffect, useState, useContext } from "react";
 import { AppSidebar } from "@/components/Sidebar/AppSidebar";
 import {
   SidebarProvider,

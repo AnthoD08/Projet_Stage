@@ -6,13 +6,19 @@ import { updateProfile } from "firebase/auth";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage"; // Importation des fonctions de gestion du stockage
 import { Navigate } from "react-router-dom";
 import { AppSidebar } from "@/components/Sidebar/AppSidebar";
-import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
+import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card } from "@/components/ui/card";
 import { Loader2 } from "lucide-react"; // Pour l'indicateur de chargement
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbList,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
 
 export default function ProfilePage() {
   // Récupération du contexte utilisateur pour l'authentification
@@ -110,6 +116,19 @@ export default function ProfilePage() {
     <SidebarProvider>
       <AppSidebar />
       <SidebarInset>
+        {/* Ajout du header avec le bouton de repli */}
+        <header className="flex h-16 shrink-0 items-center gap-2 px-4">
+          <SidebarTrigger className="-ml-1" />
+          <Separator orientation="vertical" className="mr-2 h-4" />
+          <Breadcrumb>
+            <BreadcrumbList>
+              <BreadcrumbItem>Profil</BreadcrumbItem>
+              <BreadcrumbSeparator>/</BreadcrumbSeparator>
+              <BreadcrumbItem></BreadcrumbItem>
+            </BreadcrumbList>
+          </Breadcrumb>
+        </header>
+
         <div className="flex flex-col px-6 py-4">
           <h1 className="text-2xl font-bold">Mon Profil</h1>
           <Separator className="my-4" />
