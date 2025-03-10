@@ -23,6 +23,7 @@ import { Separator } from "@/components/ui/separator";
 import {
   Breadcrumb,
   BreadcrumbItem,
+  BreadcrumbSeparator,
   BreadcrumbList,
 } from "@/components/ui/breadcrumb";
 import ProjectWizard from "@/components/Projects/ProjectWizard";
@@ -80,10 +81,10 @@ export default function ProjectsPage() {
     const unsubscribe = onSnapshot(q, (snapshot) => {
       // Transformation des documents Firestore en objets JavaScript
       const projectList = snapshot.docs.map((doc) => ({
-        id: doc.id,           // Récupération de l'ID unique du document
-        ...doc.data(),        // Déstructuration des données du document (titre, dates, etc.)
+        id: doc.id, // Récupération de l'ID unique du document
+        ...doc.data(), // Déstructuration des données du document (titre, dates, etc.)
       }));
-      
+
       // Mise à jour de l'état React avec la nouvelle liste de projets
       setProjects(projectList);
     });
@@ -211,17 +212,21 @@ export default function ProjectsPage() {
     <SidebarProvider>
       <AppSidebar />
       <SidebarInset>
-        <header className="flex h-16 items-center gap-2 px-4">
-          <SidebarTrigger className="-ml-1" />
-          <Separator orientation="vertical" className="mr-2 h-4" />
-          <Breadcrumb>
-            <BreadcrumbList>
-              <BreadcrumbItem className="hidden md:block">
-                Projets
-              </BreadcrumbItem>
-            </BreadcrumbList>
-          </Breadcrumb>
-          <Button onClick={() => setIsWizardOpen(true)} className="ml-auto">
+        <header className="flex h-16 shrink-0 items-center gap-2">
+          <div className="flex items-center gap-2 px-4">
+            <SidebarTrigger className="-ml-1" />
+            <Separator orientation="vertical" className="mr-2 h-4" />
+            <Breadcrumb>
+              <BreadcrumbList>
+                <BreadcrumbItem>Projets</BreadcrumbItem>
+                <BreadcrumbSeparator className="hidden md:block" />
+              </BreadcrumbList>
+            </Breadcrumb>
+          </div>
+          <Button
+            onClick={() => setIsWizardOpen(true)}
+            className="ml-auto mr-4"
+          >
             <Plus className="mr-2 h-4 w-4" />
             Nouveau Projet
           </Button>

@@ -20,6 +20,7 @@ import { Loader2 } from "lucide-react"; // Pour l'indicateur de chargement
 import {
   Breadcrumb,
   BreadcrumbItem,
+  BreadcrumbSeparator,
   BreadcrumbList,
 } from "@/components/ui/breadcrumb";
 
@@ -117,16 +118,19 @@ export default function ProfilePage() {
 
   return (
     <SidebarProvider>
-      <AppSidebar className="hidden md:block" />
+      <AppSidebar />
       <SidebarInset>
-        <header className="flex h-16 items-center gap-2 px-4">
-          <SidebarTrigger className="-ml-1" />
-          <Separator orientation="vertical" className="mr-2 h-4" />
-          <Breadcrumb>
-            <BreadcrumbList>
-              <BreadcrumbItem>Mon Profil</BreadcrumbItem>
-            </BreadcrumbList>
-          </Breadcrumb>
+        <header className="flex h-16 shrink-0 items-center gap-2">
+          <div className="flex items-center gap-2 px-4">
+            <SidebarTrigger className="-ml-1" />
+            <Separator orientation="vertical" className="mr-2 h-4" />
+            <Breadcrumb>
+              <BreadcrumbList>
+                <BreadcrumbItem>Mon Profil</BreadcrumbItem>
+                <BreadcrumbSeparator className="hidden md:block" />
+              </BreadcrumbList>
+            </Breadcrumb>
+          </div>
         </header>
 
         <main className="container mx-auto p-4">
