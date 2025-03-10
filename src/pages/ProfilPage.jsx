@@ -6,19 +6,17 @@ import { updateProfile } from "firebase/auth";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage"; // Importation des fonctions de gestion du stockage
 import { Navigate } from "react-router-dom";
 import { AppSidebar } from "@/components/Sidebar/AppSidebar";
-import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
+import {
+  SidebarProvider,
+  SidebarInset,
+  SidebarTrigger,
+} from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card } from "@/components/ui/card";
 import { Loader2 } from "lucide-react"; // Pour l'indicateur de chargement
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbList,
-  BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb";
 
 export default function ProfilePage() {
   // Récupération du contexte utilisateur pour l'authentification
@@ -114,21 +112,8 @@ export default function ProfilePage() {
 
   return (
     <SidebarProvider>
-      <AppSidebar />
+      <AppSidebar className="hidden md:block" />
       <SidebarInset>
-        {/* Ajout du header avec le bouton de repli */}
-        <header className="flex h-16 shrink-0 items-center gap-2 px-4">
-          <SidebarTrigger className="-ml-1" />
-          <Separator orientation="vertical" className="mr-2 h-4" />
-          <Breadcrumb>
-            <BreadcrumbList>
-              <BreadcrumbItem>Profil</BreadcrumbItem>
-              <BreadcrumbSeparator>/</BreadcrumbSeparator>
-              <BreadcrumbItem></BreadcrumbItem>
-            </BreadcrumbList>
-          </Breadcrumb>
-        </header>
-
         <div className="flex flex-col px-6 py-4">
           <h1 className="text-2xl font-bold">Mon Profil</h1>
           <Separator className="my-4" />
@@ -150,67 +135,66 @@ export default function ProfilePage() {
             </div>
           </Card>
 
-          <div className="max-w-2xl">
-            {/* Affichage des messages d'erreur et de succès */}
-            {error && <p className="text-red-500 mb-4">{error}</p>}
-            {success && (
-              <p className="text-green-500 mb-4">Profil mis à jour !</p>
-            )}
+              {error && <p className="text-red-500 mb-4">{error}</p>}
+              {success && (
+                <p className="text-green-500 mb-4">Profil mis à jour !</p>
+              )}
 
-            {/* Formulaire de mise à jour du profil */}
-            <form onSubmit={handleUpdateProfile} className="space-y-8">
-              <div className="space-y-6">
-                <div>
-                  <label className="block text-sm font-medium mb-2">
-                    Nom d'utilisateur
-                  </label>
-                  <Input
-                    type="text"
-                    value={displayName}
-                    onChange={(e) => setDisplayName(e.target.value)}
-                    className="w-full"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium mb-2">
-                    Photo de profil
-                  </label>
-                  <div
-                    onClick={handleImageClick}
-                    className="border-2 border-dashed rounded-lg p-6 text-center cursor-pointer hover:border-blue-500 transition-colors"
-                  >
-                    <input
-                      type="file"
-                      ref={fileInputRef}
-                      onChange={handleImageUpload}
-                      accept="image/*"
-                      className="hidden"
+              {/* Formulaire de mise à jour du profil */}
+              <form onSubmit={handleUpdateProfile} className="space-y-8">
+                <div className="space-y-6">
+                  <div>
+                    <label className="block text-sm font-medium mb-2">
+                      Nom d'utilisateur
+                    </label>
+                    <Input
+                      type="text"
+                      value={displayName}
+                      onChange={(e) => setDisplayName(e.target.value)}
+                      className="w-full"
                     />
-                    <Avatar className="h-24 w-24 mx-auto mb-4">
-                      <AvatarImage src={photoURL} alt="Photo de profil" />
-                      <AvatarFallback>?</AvatarFallback>
-                    </Avatar>
-                    {isUploading ? (
-                      <div className="flex items-center justify-center gap-2">
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        <p className="text-sm text-gray-500">Chargement...</p>
-                      </div>
-                    ) : (
-                      <p className="text-sm text-gray-500 mt-2">
-                        Cliquez pour sélectionner une image
-                      </p>
-                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium mb-2">
+                      Photo de profil
+                    </label>
+                    <div
+                      onClick={handleImageClick}
+                      className="border-2 border-dashed rounded-lg p-6 text-center cursor-pointer hover:border-blue-500 transition-colors"
+                    >
+                      <input
+                        type="file"
+                        ref={fileInputRef}
+                        onChange={handleImageUpload}
+                        accept="image/*"
+                        className="hidden"
+                      />
+                      <Avatar className="h-24 w-24 mx-auto mb-4">
+                        <AvatarImage src={photoURL} alt="Photo de profil" />
+                        <AvatarFallback>?</AvatarFallback>
+                      </Avatar>
+                      {isUploading ? (
+                        <div className="flex items-center justify-center gap-2">
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          <p className="text-sm text-gray-500">Chargement...</p>
+                        </div>
+                      ) : (
+                        <p className="text-sm text-gray-500 mt-2">
+                          Cliquez pour sélectionner une image
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <Button type="submit" className="w-full md:w-auto">
-                Sauvegarder les modifications
-              </Button>
-            </form>
+                <Button type="submit" className="w-full md:w-auto">
+                  Sauvegarder les modifications
+                </Button>
+              </form>
+            </div>
           </div>
-        </div>
+        </main>
       </SidebarInset>
     </SidebarProvider>
   );
