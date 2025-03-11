@@ -193,8 +193,6 @@ export default function ProfilePage() {
                 </Button>
               </form>
             </div>
-          </div>
-        </main>
       </SidebarInset>
     </SidebarProvider>
   );
