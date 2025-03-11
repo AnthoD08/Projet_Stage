@@ -1,172 +1,168 @@
 import { useState, useContext } from "react";
-import { useNavigate } from "react-router-dom";
-import { Dialog } from "@headlessui/react";
-import { X } from "lucide-react";
-import { db } from "../../config/firebase_config";
+import { UserContext } from "@/components/Auth/UserContext";
+// Ajout des imports Firebase
 import { collection, addDoc } from "firebase/firestore";
-import { UserContext } from "../Auth/UserContext";
+import { db } from "@/config/firebase_config";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { format } from "date-fns";
+import { fr } from "date-fns/locale";
+import { Calendar } from "@/components/ui/calendar";
+import { CalendarIcon } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 
-export default function ProjectWizard({ isOpen, onClose }) {
+export default function ProjectWizard({ isOpen, onClose, isTeamProject = false }) {
   const { user } = useContext(UserContext);
-  const navigate = useNavigate();
-  const [step, setStep] = useState(1);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
-  const [error, setError] = useState("");
+  const [startDate, setStartDate] = useState(null);
+  const [endDate, setEndDate] = useState(null);
 
-  const nextStep = () => {
-    if (step === 1 && title.trim() === "") {
-      return setError("Veuillez renseigner le titre.");
-    }
-    if (step === 3) {
-      if (startDate === "" || endDate === "") {
-        return setError("Veuillez renseigner les dates.");
-      }
-      if (new Date(startDate) > new Date(endDate)) {
-        return setError(
-          "La date de fin doit être postérieure à la date de début."
-        );
-      }
-    }
-    setError("");
-    setStep(step + 1);
-  };
-
-  const prevStep = () => setStep(step - 1);
-
-  const handleSubmit = async () => {
-    if (!user) {
-      setError("Vous devez être connecté pour créer un projet.");
-      return;
-    }
+  const handleCreateProject = async (formData) => {
+    if (!user) return;
 
     try {
-      await addDoc(collection(db, "projects"), {
-        title,
-        description,
-        startDate,
-        endDate,
+      const collection_name = isTeamProject ? "team" : "projects";
+      const newProject = {
+        title: formData.title,
+        description: formData.description,
         userId: user.uid,
-        createdAt: new Date(),
-      });
+        startDate: formData.startDate,
+        endDate: formData.endDate,
+        createdBy: user.uid,
+        createdAt: new Date().toISOString(),
+        members: [user.uid],
+        status: 'active'
+      };
+
+      await addDoc(collection(db, collection_name), newProject);
+      
+      // Réinitialiser le formulaire
       setTitle("");
       setDescription("");
-      setStartDate("");
-      setEndDate("");
+      setStartDate(null);
+      setEndDate(null);
+      
+      // Fermer le wizard
       onClose();
-      navigate("/projets"); // Rediriger vers la page des projets après la création du projet
     } catch (error) {
-      setError("Erreur lors de l'ajout du projet : " + error.message);
+      console.error("Erreur lors de la création du projet:", error);
     }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!title.trim()) return;
+
+    const formData = {
+      title: title,
+      description,
+      startDate: startDate ? startDate.toISOString() : new Date().toISOString(),
+      endDate: endDate ? endDate.toISOString() : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+    };
+
+    await handleCreateProject(formData);
   };
 
   return (
-    <Dialog
-      open={isOpen}
-      onClose={() => {
-        onClose();
-      }}
-      className="fixed inset-0 flex items-center justify-center bg-black/50"
-    >
-      <Dialog.Panel className="bg-white p-6 rounded-lg shadow-lg w-[400px]">
-        <div className="flex justify-between items-center">
-          <h2 className="text-lg font-semibold">Créer un projet</h2>
-          <button onClick={onClose} aria-label="Fermer">
-            <X className="w-5 h-5 text-gray-500 hover:text-gray-700" />
-          </button>
-        </div>
-
-        {step === 1 && (
-          <div>
-            <p className="mt-2 text-gray-600">
-              Ajoutez un titre à votre projet.
-            </p>
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-[525px]">
+        <DialogHeader>
+          <DialogTitle className="text-xl">
+            {isTeamProject ? "Créer un projet d'équipe" : "Créer un nouveau projet"}
+          </DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="space-y-2">
+            <Label htmlFor="title" className="text-sm font-medium">
+              Titre du projet
+            </Label>
             <Input
-              type="text"
-              className="w-full mt-3"
-              placeholder="Nom du projet"
+              id="title"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              aria-required="true"
+              placeholder="Entrez le titre du projet"
+              className="mt-1.5"
+              required
             />
           </div>
-        )}
-
-        {step === 2 && (
-          <div>
-            <p className="mt-2 text-gray-600">Ajoutez une description.</p>
-            <Textarea
-              className="w-full mt-3"
-              placeholder="Description du projet"
+          <div className="space-y-2">
+            <Label htmlFor="description" className="text-sm font-medium">
+              Description
+            </Label>
+            <Input
+              id="description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              aria-required="true"
+              placeholder="Entrez une description"
+              className="mt-1.5"
             />
           </div>
-        )}
-
-        {step === 3 && (
-          <div>
-            <p className="mt-2 text-gray-600">Sélectionnez les dates.</p>
-            <label className="block mt-3">Date de début</label>
-            <Input
-              type="date"
-              className="w-full"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              aria-required="true"
-            />
-            <label className="block mt-3">Date de fin</label>
-            <Input
-              type="date"
-              className="w-full"
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-              aria-required="true"
-            />
+          <div className="grid grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Date de début</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      !startDate && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {startDate ? format(startDate, "PPP", { locale: fr }) : "Sélectionner"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0">
+                  <Calendar
+                    mode="single"
+                    selected={startDate}
+                    onSelect={setStartDate}
+                    locale={fr}
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Date de fin</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      !endDate && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {endDate ? format(endDate, "PPP", { locale: fr }) : "Sélectionner"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0">
+                  <Calendar
+                    mode="single"
+                    selected={endDate}
+                    onSelect={setEndDate}
+                    locale={fr}
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
           </div>
-        )}
-
-        {step === 4 && (
-          <div>
-            <p className="mt-2 text-gray-600">Résumé du projet :</p>
-            <ul className="mt-3 space-y-2 text-gray-800">
-              <li>
-                <strong>Titre :</strong> {title}
-              </li>
-              <li>
-                <strong>Description :</strong> {description}
-              </li>
-              <li>
-                <strong>Début :</strong> {startDate}
-              </li>
-              <li>
-                <strong>Fin :</strong> {endDate}
-              </li>
-            </ul>
-          </div>
-        )}
-
-        {error && <p className="text-red-500 mt-3">{error}</p>}
-
-        <div className="flex justify-between mt-6">
-          {step > 1 && (
-            <Button variant="outline" onClick={prevStep}>
-              Retour
+          <div className="flex justify-end gap-3 pt-2">
+            <Button type="button" variant="ghost" onClick={onClose}>
+              Annuler
             </Button>
-          )}
-          {step < 4 ? (
-            <Button onClick={nextStep}>Suivant</Button>
-          ) : (
-            <Button onClick={handleSubmit}>Valider</Button>
-          )}
-        </div>
-      </Dialog.Panel>
+            <Button type="submit">
+              Créer le projet
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
     </Dialog>
   );
 }

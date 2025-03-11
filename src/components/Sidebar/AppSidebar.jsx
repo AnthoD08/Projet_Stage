@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { AudioWaveform, SquareTerminal, FilePen } from "lucide-react";
+import { AudioWaveform, SquareTerminal, FilePen, Users } from "lucide-react";
 import { NavUser } from "../Sidebar/NavUser";
 import { TeamSwitcher } from "@/components/Sidebar/TeamSwitch";
 import {
@@ -16,7 +16,7 @@ import {
   SidebarRail,
 } from "@/components/ui/sidebar";
 
-export function AppSidebar(props) {
+export function AppSidebar() {
   const data = {
     teams: [
       {
@@ -35,6 +35,11 @@ export function AppSidebar(props) {
         title: "Mes projets",
         url: "/projets",
         icon: FilePen,
+      },
+      {
+        title: "Equipes",
+        url: "/equipes",
+        icon: Users,
       },
     ],
   };

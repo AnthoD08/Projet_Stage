@@ -138,7 +138,7 @@ export default function HomePage() {
             {/* Carte des tâches à faire aujourd'hui */}
             <div className="aspect-video rounded-xl bg-white shadow-md p-4 flex flex-col items-center justify-center">
               <PinIcon color="#4E78F2" className="mb-3" />
-              <h2 className="text-sm font-light mb-2">À faire aujourd'hui</h2>
+              <h2 className="text-sm font-light mb-2">&Agrave; faire aujourd&apos;hui</h2>
               <p className="text-2xl font-bold">{tasksToday.length}</p>
             </div>
 

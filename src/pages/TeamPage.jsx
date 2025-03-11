@@ -13,16 +13,8 @@ import { Plus, Users, Trash2 } from "lucide-react";
 import { collection, query, where, getDocs, addDoc, deleteDoc, doc } from "firebase/firestore";
 import { db } from "../config/firebase_config";
 import { UserContext } from "../components/Auth/UserContext";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import ProjectWizard from "@/components/Projects/ProjectWizard";
 
 export default function TeamPage() {
   const [teamProjects, setTeamProjects] = useState([]);
@@ -32,6 +24,8 @@ export default function TeamPage() {
   const { user } = useContext(UserContext);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [projectToDelete, setProjectToDelete] = useState(null);
+  const [selectedTeam, setSelectedTeam] = useState(null);
+  const [isProjectWizardOpen, setIsProjectWizardOpen] = useState(false);
 
   useEffect(() => {
     const fetchTeamProjects = async () => {
@@ -39,7 +33,7 @@ export default function TeamPage() {
 
       try {
         const q = query(
-          collection(db, "team"), // Changement de la collection
+          collection(db, "team"),
           where("createdBy", "==", user.uid)
         );
         const querySnapshot = await getDocs(q);
@@ -106,6 +100,21 @@ export default function TeamPage() {
     setIsDeleteDialogOpen(true);
   };
 
+  const handleWizardClose = async () => {
+    setIsProjectWizardOpen(false);
+    // Rafraîchir la liste des projets après la création
+    const q = query(
+      collection(db, "team"),
+      where("createdBy", "==", user.uid)
+    );
+    const querySnapshot = await getDocs(q);
+    const projects = querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+    setTeamProjects(projects);
+  };
+
   return (
     <SidebarProvider>
       <AppSidebar />
@@ -121,7 +130,7 @@ export default function TeamPage() {
             </BreadcrumbList>
           </Breadcrumb>
           <div className="ml-auto">
-            <Button onClick={() => setIsCreateDialogOpen(true)}>
+            <Button onClick={() => setIsProjectWizardOpen(true)}>
               <Plus className="h-4 w-4 mr-2" />
               Nouveau projet d&apos;équipe
             </Button>
@@ -142,7 +151,7 @@ export default function TeamPage() {
               {teamProjects.map((project) => (
                 <div key={project.id} className="bg-white p-4 rounded-lg shadow">
                   <div className="flex justify-between items-start">
-                    <h3 className="font-semibold">{project.name}</h3>
+                    <h3 className="font-semibold">{project.title}</h3>
                     <Button
                       variant="ghost"
                       size="icon"
@@ -167,39 +176,12 @@ export default function TeamPage() {
           )}
         </main>
 
-        <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Créer un nouveau projet d&apos;équipe</DialogTitle>
-            </DialogHeader>
-            <form onSubmit={handleCreateProject}>
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="projectName">Nom du projet</Label>
-                  <Input
-                    id="projectName"
-                    value={newProjectName}
-                    onChange={(e) => setNewProjectName(e.target.value)}
-                    placeholder="Nom du projet"
-                    required
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="projectDescription">Description</Label>
-                  <Input
-                    id="projectDescription"
-                    value={newProjectDescription}
-                    onChange={(e) => setNewProjectDescription(e.target.value)}
-                    placeholder="Description du projet"
-                  />
-                </div>
-              </div>
-              <DialogFooter className="mt-4">
-                <Button type="submit">Créer le projet</Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
+        <ProjectWizard 
+          isOpen={isProjectWizardOpen}
+          onClose={handleWizardClose}
+          isTeamProject={true}
+          teamId={selectedTeam?.id}
+        />
 
         <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
           <AlertDialogContent>

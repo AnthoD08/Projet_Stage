@@ -4,6 +4,7 @@ import ProjectsPage from "./pages/Projects";
 import ProjectDetailsPage from "./pages/ProjectDetailsPage";
 import { UserProvider } from "./components/Auth/UserContext";
 import ProfilePage from "./pages/ProfilPage";
+import TeamPage from "./pages/TeamPage";
 
 function App() {
   return (
@@ -15,6 +16,8 @@ function App() {
           <Route path="projets" element={<ProjectsPage />} />
           <Route path="projets/:projectId" element={<ProjectDetailsPage />} />
           <Route path="profil" element={<ProfilePage />} />
+          <Route path="equipes" element={<TeamPage />} />
+          
         </Routes>
       </Router>
     </UserProvider>

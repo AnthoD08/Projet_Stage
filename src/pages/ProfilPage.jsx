@@ -166,7 +166,7 @@ export default function ProfilePage() {
                 <div className="space-y-6">
                   <div>
                     <label className="block text-sm font-medium mb-2">
-                      Nom d'utilisateur
+                      Nom d&apos;utilisateur
                     </label>
                     <Input
                       type="text"

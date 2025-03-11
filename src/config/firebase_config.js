@@ -1,6 +1,6 @@
 // config.js
 import { initializeApp } from "firebase/app";
-import { getFirestore, collection, addDoc } from "firebase/firestore"; // Importer Firestore et les fonctions nécessaires
+import { getFirestore, setDoc, doc } from "firebase/firestore"; // Importer Firestore et les fonctions nécessaires
 import { getAuth } from "firebase/auth";
 import { getStorage } from "firebase/storage";
 

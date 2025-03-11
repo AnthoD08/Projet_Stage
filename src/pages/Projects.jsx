@@ -205,7 +205,7 @@ export default function ProjectsPage() {
   // Fonction pour gérer la fermeture de la boîte de dialogue du wizard
   const handleCloseWizard = () => {
     setIsWizardOpen(false);
-    navigate("/");
+    // Supprimer la navigation vers l'accueil
   };
 
   return (
@@ -240,9 +240,15 @@ export default function ProjectsPage() {
                 className="border rounded-lg p-4 shadow-sm bg-white flex flex-col justify-between hover:bg-stone-100 relative max-w-sm"
               >
                 <Link to={`/projets/${project.id}`} className="flex-grow">
-                  <h2 className="text-lg font-semibold mb-3">
+                  <h2 className="text-lg font-semibold mb-2">
                     {project.title}
                   </h2>
+                  {/* Ajout de la description */}
+                  {project.description && (
+                    <p className="text-sm text-gray-600 mb-3 line-clamp-2">
+                      {project.description}
+                    </p>
+                  )}
                   <p className="text-sm">
                     <span className="bg-green-200 text-green-800 px-2 py-1 rounded">
                       {project.startDate && project.endDate
@@ -257,13 +263,17 @@ export default function ProjectsPage() {
                     </span>
                   </p>
                 </Link>
-                <button onClick={() => handleDeleteProject(project.id)}>
-                  <Trash2 className="text-red-500 hover:text-red-700 absolute bottom-0 right-0" />
-                </button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => handleDeleteProject(project.id)}
+                  className="absolute bottom-2 right-2 hover:bg-red-100"
+                >
+                  <Trash2 className="h-4 w-4 text-red-500 hover:text-red-700" />
+                </Button>
               </div>
             ))}
           </div>
-
           {error && <p className="text-red-500 mt-4">{error}</p>}
         </div>
         <ProjectWizard isOpen={isWizardOpen} onClose={handleCloseWizard} />
