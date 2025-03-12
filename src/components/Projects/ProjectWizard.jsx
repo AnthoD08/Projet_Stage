@@ -27,13 +27,13 @@ export default function ProjectWizard({ isOpen, onClose, isTeamProject = false }
     try {
       const collection_name = isTeamProject ? "team" : "projects";
       const newProject = {
-        title: formData.title,
+        title: formData.title, // Utiliser title au lieu de name
         description: formData.description,
         userId: user.uid,
-        startDate: formData.startDate,
-        endDate: formData.endDate,
         createdBy: user.uid,
         createdAt: new Date().toISOString(),
+        startDate: formData.startDate,
+        endDate: formData.endDate,
         members: [user.uid],
         status: 'active'
       };

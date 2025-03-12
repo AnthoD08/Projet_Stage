@@ -45,6 +45,32 @@ export default function ProjectDetailsPage() {
   const [tasks, setTasks] = useState([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
+  // Nouvelle fonction pour déterminer la source du projet
+  const determineProjectSource = async (projectId) => {
+    try {
+      // Vérifier d'abord dans la collection 'projects'
+      const projectRef = doc(db, "projects", projectId);
+      let docSnap = await getDoc(projectRef);
+
+      if (docSnap.exists()) {
+        return "projects";
+      }
+
+      // Si pas trouvé, vérifier dans 'team'
+      const teamRef = doc(db, "team", projectId);
+      docSnap = await getDoc(teamRef);
+
+      if (docSnap.exists()) {
+        return "team";
+      }
+
+      return null;
+    } catch (error) {
+      console.error("Erreur lors de la détermination de la source:", error);
+      return null;
+    }
+  };
+
   // Effect pour récupérer les détails du projet
   useEffect(() => {
     if (!user) {
@@ -53,10 +79,17 @@ export default function ProjectDetailsPage() {
     }
 
     async function fetchProject() {
-      const docRef = doc(db, "projects", projectId);
-      const docSnap = await getDoc(docRef);
+      const projectSource = await determineProjectSource(projectId);
+      const collectionName = projectSource === "team" ? "team" : "projects";
+      const projectRef = doc(db, collectionName, projectId);
+      const docSnap = await getDoc(projectRef);
+
       if (docSnap.exists()) {
-        setProject({ id: docSnap.id, ...docSnap.data() });
+        setProject({ 
+          id: docSnap.id, 
+          ...docSnap.data(),
+          source: projectSource // Ajouter la source aux données du projet
+        });
       }
     }
     fetchProject();
@@ -121,13 +154,15 @@ export default function ProjectDetailsPage() {
       <SidebarInset>
         <header className="flex h-16 shrink-0 items-center gap-2 px-4">
           <SidebarTrigger className="-ml-1" />
-          <Separator orientation="vertical" className="mr-2 h-4" />
+    
           <Breadcrumb>
             <BreadcrumbList>
               <BreadcrumbItem>
-                <Link to="/projets">Projets</Link>
+                <Link to={project?.source === "team" ? "/equipes" : "/projets"}>
+                  {project?.source === "team" ? "Equipes" : "Projets"}
+                </Link>
               </BreadcrumbItem>
-              <BreadcrumbSeparator>/</BreadcrumbSeparator>
+              <BreadcrumbSeparator></BreadcrumbSeparator>
               <BreadcrumbItem>Détails du projet</BreadcrumbItem>
             </BreadcrumbList>
           </Breadcrumb>
@@ -136,7 +171,7 @@ export default function ProjectDetailsPage() {
         {/* Affichage des détails du projet */}
         {project && (
           <div className="p-6">
-            <h1 className="text-3xl font-bold mb-4">{project.title}</h1>
+            <h1 className="text-3xl font-bold mb-4">{project.title || project.name}</h1>
           </div>
         )}
 

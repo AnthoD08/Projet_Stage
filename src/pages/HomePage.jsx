@@ -14,7 +14,7 @@ import {
   BreadcrumbList,
 } from "@/components/ui/breadcrumb";
 import { db } from "../config/firebase_config";
-import { collection, query, where, onSnapshot } from "firebase/firestore";
+import { collection, query, where, onSnapshot, getDocs } from "firebase/firestore";
 import dayjs from "dayjs";
 import { PinIcon, FileCheck, Hourglass } from "lucide-react";
 import { UserContext } from "../components/Auth/UserContext";
@@ -30,84 +30,79 @@ export default function HomePage() {
   const [tasksOverdue, setTasksOverdue] = useState([]); // Tâches en retard
   const [userTasks, setUserTasks] = useState([]); // Toutes les tâches de l'utilisateur
 
-  // Effect pour synchroniser les données avec Firestore
   useEffect(() => {
-    // Vérifie si un utilisateur est connecté
     if (!user) {
-      // Réinitialisation des états si aucun utilisateur n'est connecté
       setTasksToday([]);
       setTasksCompletedToday([]);
       setTasksOverdue([]);
+      setUserTasks([]);
       return;
     }
 
-    // Obtention de la date du jour au format YYYY-MM-DD
-    const today = dayjs().format("YYYY-MM-DD");
-    const projectsRef = collection(db, "projects");
+    const fetchAllTasks = async () => {
+      try {
+        // 1. Récupérer tous les projets individuels
+        const individualProjectsQuery = query(
+          collection(db, "projects"),
+          where("userId", "==", user.uid)
+        );
+        const individualProjectsSnapshot = await getDocs(individualProjectsQuery);
+        const individualProjectIds = individualProjectsSnapshot.docs.map(doc => doc.id);
 
-    // Création d'une requête pour obtenir les projets de l'utilisateur
-    const projectsQuery = query(projectsRef, where("userId", "==", user.uid));
+        // 2. Récupérer tous les projets d'équipe où l'utilisateur est assigné à des tâches
+        const teamProjectMembersQuery = query(
+          collection(db, "team_members"),
+          where("email", "==", user.email),
+          where("status", "==", "accepted")
+        );
+        const teamMembersSnapshot = await getDocs(teamProjectMembersQuery);
+        const teamProjectIds = teamMembersSnapshot.docs.map(doc => doc.data().projectId);
 
-    // Observer les changements dans les projets de l'utilisateur en temps réel
-    const unsubscribeProjects = onSnapshot(projectsQuery, (snapshot) => {
-      const userProjects = snapshot.docs.map((doc) => doc.id);
+        // 3. Récupérer toutes les tâches des projets individuels
+        let allTasks = [];
+        const individualTasksQuery = query(
+          collection(db, "tasks"),
+          where("projectId", "in", individualProjectIds.length > 0 ? individualProjectIds : ['dummy'])
+        );
+        const individualTasksSnapshot = await getDocs(individualTasksQuery);
+        allTasks.push(...individualTasksSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
 
-      // Si l'utilisateur n'a pas de projets, réinitialiser les états
-      if (userProjects.length === 0) {
-        setTasksToday([]);
-        setTasksCompletedToday([]);
-        setTasksOverdue([]);
-        return;
-      }
+        // 4. Récupérer toutes les tâches des projets d'équipe assignées à l'utilisateur
+        if (teamProjectIds.length > 0) {
+          for (const projectId of teamProjectIds) {
+            const teamTasksQuery = query(
+              collection(db, "tasks"),
+              where("projectId", "==", projectId),
+              where("assignedTo", "==", user.email)
+            );
+            const teamTasksSnapshot = await getDocs(teamTasksQuery);
+            allTasks.push(...teamTasksSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+          }
+        }
 
-      const tasksRef = collection(db, "tasks");
-
-      // Limitation Firestore : maximum 10 éléments dans une clause "in"
-      if (userProjects.length > 10) {
-        console.warn("Trop de projets pour utiliser 'in', requête divisée.");
-        return;
-      }
-
-      // Création d'une requête pour obtenir toutes les tâches des projets
-      const tasksQuery = query(
-        tasksRef,
-        where("projectId", "in", userProjects)
-      );
-
-      // Observer les changements dans les tâches en temps réel
-      const unsubscribeTasks = onSnapshot(tasksQuery, (snapshot) => {
-        // Conversion des documents Firestore en objets JavaScript
-        const allTasks = snapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        }));
-
-        // Mise à jour de l'état global des tâches
-        setUserTasks(allTasks);
-
-        // Filtrage des tâches selon leur statut et date
+        // 5. Filtrer et mettre à jour les états
+        const today = dayjs().format("YYYY-MM-DD");
+        
         const tasksForToday = allTasks.filter(
-          (task) => task.dueDate === today && !task.completed
+          task => task.dueDate === today && !task.completed
         );
         const completedTasksToday = allTasks.filter(
-          (task) => task.completed === true
+          task => task.completed === true
         );
         const overdueTasks = allTasks.filter(
-          (task) => task.dueDate < today && !task.completed
+          task => task.dueDate < today && !task.completed
         );
 
-        // Mise à jour des états avec les tâches filtrées
         setTasksToday(tasksForToday);
         setTasksCompletedToday(completedTasksToday);
         setTasksOverdue(overdueTasks);
-      });
+        setUserTasks(allTasks);
+      } catch (error) {
+        console.error("Erreur lors de la récupération des tâches:", error);
+      }
+    };
 
-      // Nettoyage de l'observer des tâches
-      return () => unsubscribeTasks();
-    });
-
-    // Nettoyage de l'observer des projets lors du démontage du composant
-    return () => unsubscribeProjects();
+    fetchAllTasks();
   }, [user]);
 
   return (

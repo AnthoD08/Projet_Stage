@@ -4,6 +4,8 @@ import { createUserWithEmailAndPassword } from "firebase/auth";
 import { UserContext } from "./UserContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { doc, setDoc } from 'firebase/firestore';
+import { db } from '@/config/firebase_config';
 
 export function RegisterForm({ switchMode }) {
   const { setUser } = useContext(UserContext);
@@ -16,14 +18,32 @@ export function RegisterForm({ switchMode }) {
     setError("");
 
     try {
+      // 1. Créer l'utilisateur dans Authentication (nécessaire pour la sécurité)
       const userCredential = await createUserWithEmailAndPassword(
         auth,
         email,
         password
       );
+
+      // 2. Créer l'utilisateur dans la collection users (nécessaire pour les données supplémentaires)
+      await setDoc(doc(db, "users", userCredential.user.uid), {
+        uid: userCredential.user.uid,
+        email: userCredential.user.email,
+        displayName: userCredential.user.displayName || null,
+        photoURL: userCredential.user.photoURL || null,
+        createdAt: new Date().toISOString(),
+        lastLogin: new Date().toISOString(),
+        role: 'user'
+      });
+
       setUser(userCredential.user);
     } catch (err) {
-      setError("Erreur lors de l'inscription. Vérifiez vos informations.");
+      console.error("Erreur d'inscription:", err);
+      setError(
+        err.code === 'auth/email-already-in-use' 
+          ? "Cette adresse email est déjà utilisée."
+          : "Erreur lors de l'inscription. Vérifiez vos informations."
+      );
     }
   };
 

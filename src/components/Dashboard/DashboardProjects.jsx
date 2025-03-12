@@ -12,6 +12,8 @@ import {
   deleteDoc,
   where,
   updateDoc,
+  getDoc,
+  getDocs,
 } from "firebase/firestore";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -44,6 +46,9 @@ const Dashboard = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [showAddTaskForm, setShowAddTaskForm] = useState(false);
   const [taskToDelete, setTaskToDelete] = useState(null);
+  const [projectMembers, setProjectMembers] = useState([]);
+  const [isTeamProject, setIsTeamProject] = useState(false);
+  const [selectedAssignee, setSelectedAssignee] = useState("");
 
   useEffect(() => {
     if (!projectId) return;
@@ -61,6 +66,38 @@ const Dashboard = () => {
     return () => unsubscribe();
   }, [projectId]);
 
+  useEffect(() => {
+    const checkProjectType = async () => {
+      try {
+        // Vérifier si c'est un projet d'équipe
+        const projectRef = doc(db, "team", projectId);
+        const projectDoc = await getDoc(projectRef);
+        const isTeam = projectDoc.exists();
+        setIsTeamProject(isTeam);
+
+        if (isTeam) {
+          // Récupérer les membres du projet
+          const membersRef = collection(db, "team_members");
+          const q = query(
+            membersRef,
+            where("projectId", "==", projectId),
+            where("status", "==", "accepted")
+          );
+          const snapshot = await getDocs(q);
+          const members = snapshot.docs.map((doc) => ({
+            id: doc.id,
+            ...doc.data(),
+          }));
+          setProjectMembers(members);
+        }
+      } catch (error) {
+        console.error("Erreur lors de la vérification du type de projet:", error);
+      }
+    };
+
+    checkProjectType();
+  }, [projectId]);
+
   const handleAddTask = async () => {
     if (newTaskTitle.trim() === "" || newDueDate.trim() === "" || !projectId)
       return;
@@ -72,11 +109,13 @@ const Dashboard = () => {
         priority: newPriority,
         projectId: projectId,
         completed: false,
+        assignedTo: isTeamProject ? selectedAssignee : null,
       });
       setNewTaskTitle("");
       setNewDueDate("");
       setNewPriority("Moyenne");
       setShowAddTaskForm(false);
+      setSelectedAssignee("");
     } catch (error) {
       console.error("Erreur lors de l'ajout de la tâche :", error);
     }
@@ -159,6 +198,26 @@ const Dashboard = () => {
                 </select>
               </div>
             </div>
+            {isTeamProject && (
+              <div className="space-y-2">
+                <label htmlFor="assignee" className="block text-sm font-medium text-gray-700">
+                  Assigné à
+                </label>
+                <select
+                  id="assignee"
+                  value={selectedAssignee}
+                  onChange={(e) => setSelectedAssignee(e.target.value)}
+                  className="w-full p-2 border rounded-md"
+                >
+                  <option value="">Non assigné</option>
+                  {projectMembers.map((member) => (
+                    <option key={member.id} value={member.email}>
+                      {member.email}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
             <div className="flex justify-end space-x-2">
               <Button
                 variant="outline"

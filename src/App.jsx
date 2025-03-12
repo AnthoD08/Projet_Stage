@@ -17,7 +17,7 @@ function App() {
           <Route path="projets/:projectId" element={<ProjectDetailsPage />} />
           <Route path="profil" element={<ProfilePage />} />
           <Route path="equipes" element={<TeamPage />} />
-          
+          <Route path="equipes/:projectId" element={<ProjectDetailsPage />} />
         </Routes>
       </Router>
     </UserProvider>
