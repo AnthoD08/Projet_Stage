@@ -46,12 +46,33 @@ const Dashboard = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [showAddTaskForm, setShowAddTaskForm] = useState(false);
   const [taskToDelete, setTaskToDelete] = useState(null);
-  const [projectMembers, setProjectMembers] = useState([]);
-  const [isTeamProject, setIsTeamProject] = useState(false);
-  const [selectedAssignee, setSelectedAssignee] = useState("");
+
+  const ensureTasksCollection = async () => {
+    try {
+      // Vérifier si la collection tasks existe
+      const tasksCollection = collection(db, "tasks");
+      await addDoc(tasksCollection, {
+        _dummy: true,
+        createdAt: new Date().toISOString()
+      });
+      // Supprimer immédiatement le document dummy
+      const dummyQuery = query(tasksCollection, where("_dummy", "==", true));
+      const snapshot = await getDocs(dummyQuery);
+      snapshot.docs.forEach(async (doc) => {
+        await deleteDoc(doc.ref);
+      });
+      console.log("Collection 'tasks' initialisée avec succès");
+    } catch (error) {
+      console.error("Erreur lors de l'initialisation de la collection tasks:", error);
+    }
+  };
 
   useEffect(() => {
     if (!projectId) return;
+    
+    // Initialiser la collection tasks si nécessaire
+    ensureTasksCollection();
+
     const q = query(
       collection(db, "tasks"),
       where("projectId", "==", projectId)
@@ -60,48 +81,20 @@ const Dashboard = () => {
       const tasksData = snapshot.docs.map((docSnap) => ({
         id: docSnap.id,
         ...docSnap.data(),
-      }));
+      }))
+      .filter(task => !task._dummy); // Filtrer le document dummy si présent
       setTasks(tasksData);
     });
     return () => unsubscribe();
   }, [projectId]);
 
-  useEffect(() => {
-    const checkProjectType = async () => {
-      try {
-        // Vérifier si c'est un projet d'équipe
-        const projectRef = doc(db, "team", projectId);
-        const projectDoc = await getDoc(projectRef);
-        const isTeam = projectDoc.exists();
-        setIsTeamProject(isTeam);
-
-        if (isTeam) {
-          // Récupérer les membres du projet
-          const membersRef = collection(db, "team_members");
-          const q = query(
-            membersRef,
-            where("projectId", "==", projectId),
-            where("status", "==", "accepted")
-          );
-          const snapshot = await getDocs(q);
-          const members = snapshot.docs.map((doc) => ({
-            id: doc.id,
-            ...doc.data(),
-          }));
-          setProjectMembers(members);
-        }
-      } catch (error) {
-        console.error("Erreur lors de la vérification du type de projet:", error);
-      }
-    };
-
-    checkProjectType();
-  }, [projectId]);
-
   const handleAddTask = async () => {
-    if (newTaskTitle.trim() === "" || newDueDate.trim() === "" || !projectId)
-      return;
+    if (newTaskTitle.trim() === "" || newDueDate.trim() === "" || !projectId) return;
+    
     try {
+      // Assurer que la collection existe avant d'ajouter une tâche
+      await ensureTasksCollection();
+
       await addDoc(collection(db, "tasks"), {
         title: newTaskTitle,
         status: "in-progress",
@@ -109,13 +102,13 @@ const Dashboard = () => {
         priority: newPriority,
         projectId: projectId,
         completed: false,
-        assignedTo: isTeamProject ? selectedAssignee : null,
+        createdAt: new Date().toISOString()
       });
+
       setNewTaskTitle("");
       setNewDueDate("");
       setNewPriority("Moyenne");
       setShowAddTaskForm(false);
-      setSelectedAssignee("");
     } catch (error) {
       console.error("Erreur lors de l'ajout de la tâche :", error);
     }
@@ -198,26 +191,6 @@ const Dashboard = () => {
                 </select>
               </div>
             </div>
-            {isTeamProject && (
-              <div className="space-y-2">
-                <label htmlFor="assignee" className="block text-sm font-medium text-gray-700">
-                  Assigné à
-                </label>
-                <select
-                  id="assignee"
-                  value={selectedAssignee}
-                  onChange={(e) => setSelectedAssignee(e.target.value)}
-                  className="w-full p-2 border rounded-md"
-                >
-                  <option value="">Non assigné</option>
-                  {projectMembers.map((member) => (
-                    <option key={member.id} value={member.email}>
-                      {member.email}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
             <div className="flex justify-end space-x-2">
               <Button
                 variant="outline"

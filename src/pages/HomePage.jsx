@@ -21,14 +21,11 @@ import { UserContext } from "../components/Auth/UserContext";
 import Dashboard from "@/components/Dashboard/Dashboard";
 
 export default function HomePage() {
-  // Récupération du contexte utilisateur pour l'authentification
   const { user } = useContext(UserContext);
-
-  // Initialisation des états pour gérer les différentes catégories de tâches
-  const [tasksToday, setTasksToday] = useState([]); // Tâches à faire aujourd'hui
-  const [tasksCompletedToday, setTasksCompletedToday] = useState([]); // Tâches terminées aujourd'hui
-  const [tasksOverdue, setTasksOverdue] = useState([]); // Tâches en retard
-  const [userTasks, setUserTasks] = useState([]); // Toutes les tâches de l'utilisateur
+  const [tasksToday, setTasksToday] = useState([]);
+  const [tasksCompletedToday, setTasksCompletedToday] = useState([]);
+  const [tasksOverdue, setTasksOverdue] = useState([]);
+  const [userTasks, setUserTasks] = useState([]);
 
   useEffect(() => {
     if (!user) {
@@ -41,62 +38,70 @@ export default function HomePage() {
 
     const fetchAllTasks = async () => {
       try {
-        // 1. Récupérer tous les projets individuels
+        let allTasks = [];
+        const today = dayjs().startOf('day');
+
+        // 1. Récupérer les projets individuels
+        const individualProjectsRef = collection(db, "projects");
         const individualProjectsQuery = query(
-          collection(db, "projects"),
+          individualProjectsRef,
           where("userId", "==", user.uid)
         );
         const individualProjectsSnapshot = await getDocs(individualProjectsQuery);
         const individualProjectIds = individualProjectsSnapshot.docs.map(doc => doc.id);
 
-        // 2. Récupérer tous les projets d'équipe où l'utilisateur est assigné à des tâches
-        const teamProjectMembersQuery = query(
-          collection(db, "team_members"),
-          where("email", "==", user.email),
-          where("status", "==", "accepted")
+        // 2. Récupérer les projets d'équipe
+        const teamProjectsRef = collection(db, "team");
+        const teamProjectsQuery = query(
+          teamProjectsRef,
+          where("members", "array-contains", user.uid)
         );
-        const teamMembersSnapshot = await getDocs(teamProjectMembersQuery);
-        const teamProjectIds = teamMembersSnapshot.docs.map(doc => doc.data().projectId);
+        const teamProjectsSnapshot = await getDocs(teamProjectsQuery);
+        const teamProjectIds = teamProjectsSnapshot.docs.map(doc => doc.id);
 
-        // 3. Récupérer toutes les tâches des projets individuels
-        let allTasks = [];
-        const individualTasksQuery = query(
-          collection(db, "tasks"),
-          where("projectId", "in", individualProjectIds.length > 0 ? individualProjectIds : ['dummy'])
-        );
-        const individualTasksSnapshot = await getDocs(individualTasksQuery);
-        allTasks.push(...individualTasksSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+        // Combiner tous les IDs de projet
+        const allProjectIds = [...individualProjectIds, ...teamProjectIds];
 
-        // 4. Récupérer toutes les tâches des projets d'équipe assignées à l'utilisateur
-        if (teamProjectIds.length > 0) {
-          for (const projectId of teamProjectIds) {
-            const teamTasksQuery = query(
-              collection(db, "tasks"),
-              where("projectId", "==", projectId),
-              where("assignedTo", "==", user.email)
+        if (allProjectIds.length > 0) {
+          const tasksRef = collection(db, "tasks");
+          const tasksQuery = query(
+            tasksRef,
+            where("projectId", "in", allProjectIds)
+          );
+
+          const unsubscribe = onSnapshot(tasksQuery, (snapshot) => {
+            const tasks = snapshot.docs.map(doc => ({
+              id: doc.id,
+              ...doc.data(),
+              dueDate: doc.data().dueDate ? dayjs(doc.data().dueDate) : null
+            }));
+
+            const tasksForToday = tasks.filter(task => 
+              task.dueDate && 
+              task.dueDate.isSame(today, 'day') && 
+              !task.completed
             );
-            const teamTasksSnapshot = await getDocs(teamTasksQuery);
-            allTasks.push(...teamTasksSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-          }
+
+            const completedTasksToday = tasks.filter(task => 
+              task.completed && 
+              task.completedAt && 
+              dayjs(task.completedAt).isSame(today, 'day')
+            );
+
+            const overdueTasks = tasks.filter(task => 
+              task.dueDate && 
+              task.dueDate.isBefore(today, 'day') && 
+              !task.completed
+            );
+
+            setTasksToday(tasksForToday);
+            setTasksCompletedToday(completedTasksToday);
+            setTasksOverdue(overdueTasks);
+            setUserTasks(tasks);
+          });
+
+          return () => unsubscribe();
         }
-
-        // 5. Filtrer et mettre à jour les états
-        const today = dayjs().format("YYYY-MM-DD");
-        
-        const tasksForToday = allTasks.filter(
-          task => task.dueDate === today && !task.completed
-        );
-        const completedTasksToday = allTasks.filter(
-          task => task.completed === true
-        );
-        const overdueTasks = allTasks.filter(
-          task => task.dueDate < today && !task.completed
-        );
-
-        setTasksToday(tasksForToday);
-        setTasksCompletedToday(completedTasksToday);
-        setTasksOverdue(overdueTasks);
-        setUserTasks(allTasks);
       } catch (error) {
         console.error("Erreur lors de la récupération des tâches:", error);
       }
