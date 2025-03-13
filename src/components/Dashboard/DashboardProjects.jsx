@@ -53,7 +53,7 @@ const Dashboard = () => {
       const tasksCollection = collection(db, "tasks");
       await addDoc(tasksCollection, {
         _dummy: true,
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
       });
       // Supprimer immédiatement le document dummy
       const dummyQuery = query(tasksCollection, where("_dummy", "==", true));
@@ -63,13 +63,16 @@ const Dashboard = () => {
       });
       console.log("Collection 'tasks' initialisée avec succès");
     } catch (error) {
-      console.error("Erreur lors de l'initialisation de la collection tasks:", error);
+      console.error(
+        "Erreur lors de l'initialisation de la collection tasks:",
+        error
+      );
     }
   };
 
   useEffect(() => {
     if (!projectId) return;
-    
+
     // Initialiser la collection tasks si nécessaire
     ensureTasksCollection();
 
@@ -78,19 +81,21 @@ const Dashboard = () => {
       where("projectId", "==", projectId)
     );
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const tasksData = snapshot.docs.map((docSnap) => ({
-        id: docSnap.id,
-        ...docSnap.data(),
-      }))
-      .filter(task => !task._dummy); // Filtrer le document dummy si présent
+      const tasksData = snapshot.docs
+        .map((docSnap) => ({
+          id: docSnap.id,
+          ...docSnap.data(),
+        }))
+        .filter((task) => !task._dummy); // Filtrer le document dummy si présent
       setTasks(tasksData);
     });
     return () => unsubscribe();
   }, [projectId]);
 
   const handleAddTask = async () => {
-    if (newTaskTitle.trim() === "" || newDueDate.trim() === "" || !projectId) return;
-    
+    if (newTaskTitle.trim() === "" || newDueDate.trim() === "" || !projectId)
+      return;
+
     try {
       // Assurer que la collection existe avant d'ajouter une tâche
       await ensureTasksCollection();
@@ -102,7 +107,7 @@ const Dashboard = () => {
         priority: newPriority,
         projectId: projectId,
         completed: false,
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
       });
 
       setNewTaskTitle("");
@@ -130,7 +135,11 @@ const Dashboard = () => {
   const toggleTaskCompletion = async (taskId, currentStatus) => {
     try {
       const taskRef = doc(db, "tasks", taskId);
-      await updateDoc(taskRef, { completed: !currentStatus });
+      await updateDoc(taskRef, {
+        completed: !currentStatus,
+        completedAt: !currentStatus ? new Date().toISOString() : null,
+        updatedAt: new Date().toISOString(),
+      });
     } catch (error) {
       console.error("Erreur lors de la mise à jour :", error);
     }

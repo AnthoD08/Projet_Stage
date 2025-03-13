@@ -1,7 +1,15 @@
 import React, { useState, useEffect, useContext, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { db } from "../../config/firebase_config";
-import { collection, query, onSnapshot, where } from "firebase/firestore";
+import {
+  collection,
+  query,
+  onSnapshot,
+  where,
+  getDocs,
+  getDoc,
+  doc,
+} from "firebase/firestore";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Table,
@@ -24,45 +32,92 @@ const Dashboard = () => {
   // État de tri : key peut être "priority", "project", "dueDate"
   const [sortConfig, setSortConfig] = useState({ key: null, direction: "asc" });
 
-  // Récupérer les projets de l'utilisateur et stocker un mapping id -> title
+  // Modifier la récupération des projets
   useEffect(() => {
     if (!user) return;
-    const projectsQuery = query(
-      collection(db, "projects"),
-      where("userId", "==", user.uid)
-    );
-    const unsubscribeProjects = onSnapshot(projectsQuery, (snapshot) => {
-      const map = {};
-      snapshot.docs.forEach((doc) => {
-        // Utiliser le champ "title" pour le nom du projet
-        map[doc.id] = doc.data().title;
-      });
 
-      setProjectsMap(map);
-    });
-    return () => unsubscribeProjects();
+    // 1. Récupérer les projets créés par l'utilisateur
+    const userProjectsQuery = query(
+      collection(db, "projects"),
+      where("createdBy", "==", user.uid)
+    );
+
+    // 2. Récupérer les projets où l'utilisateur est membre
+    const memberProjectsQuery = query(
+      collection(db, "project_members"),
+      where("userId", "==", user.uid),
+      where("status", "==", "accepted")
+    );
+
+    const unsubscribe = async () => {
+      try {
+        // Récupérer tous les projets
+        const [userProjectsSnapshot, memberProjectsSnapshot] =
+          await Promise.all([
+            getDocs(userProjectsQuery),
+            getDocs(memberProjectsQuery),
+          ]);
+
+        const map = {};
+
+        // Ajouter les projets créés par l'utilisateur
+        userProjectsSnapshot.docs.forEach((doc) => {
+          map[doc.id] = doc.data().title;
+        });
+
+        // Ajouter les projets où l'utilisateur est membre
+        for (const memberDoc of memberProjectsSnapshot.docs) {
+          const projectId = memberDoc.data().projectId;
+          const projectDoc = await getDoc(doc(db, "projects", projectId));
+          if (projectDoc.exists()) {
+            map[projectDoc.id] = projectDoc.data().title;
+          }
+        }
+
+        setProjectsMap(map);
+        console.log("Projets chargés:", map); // Debug log
+      } catch (error) {
+        console.error("Erreur lors du chargement des projets:", error);
+      }
+    };
+
+    unsubscribe();
   }, [user]);
 
-  // Récupérer les tâches filtrées par projectId
+  // Modifier la récupération des tâches
   useEffect(() => {
     if (!user) return;
+
     const projectIds = Object.keys(projectsMap);
     if (projectIds.length === 0) return;
-    if (projectIds.length > 10) {
-      return;
-    }
+
     const tasksQuery = query(
       collection(db, "tasks"),
       where("projectId", "in", projectIds)
     );
-    const unsubscribeTasks = onSnapshot(tasksQuery, (snapshot) => {
-      const taskList = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
 
-      setTasks(taskList);
-    });
+    const unsubscribeTasks = onSnapshot(
+      tasksQuery,
+      (snapshot) => {
+        try {
+          const taskList = snapshot.docs.map((doc) => ({
+            id: doc.id,
+            ...doc.data(),
+          }));
+          setTasks(taskList);
+        } catch (error) {
+          if (error.code === "permission-denied") {
+            console.log("Session expirée ou permissions insuffisantes");
+            setTasks([]);
+          }
+        }
+      },
+      (error) => {
+        console.log("Erreur de listener:", error);
+        setTasks([]);
+      }
+    );
+
     return () => unsubscribeTasks();
   }, [user, projectsMap]);
 

@@ -14,7 +14,13 @@ import {
   BreadcrumbList,
 } from "@/components/ui/breadcrumb";
 import { db } from "../config/firebase_config";
-import { collection, query, where, onSnapshot, getDocs } from "firebase/firestore";
+import {
+  collection,
+  query,
+  where,
+  onSnapshot,
+  getDocs,
+} from "firebase/firestore";
 import dayjs from "dayjs";
 import { PinIcon, FileCheck, Hourglass } from "lucide-react";
 import { UserContext } from "../components/Auth/UserContext";
@@ -38,60 +44,76 @@ export default function HomePage() {
 
     const fetchAllTasks = async () => {
       try {
-        let allTasks = [];
-        const today = dayjs().startOf('day');
-
-        // 1. Récupérer les projets individuels
-        const individualProjectsRef = collection(db, "projects");
-        const individualProjectsQuery = query(
-          individualProjectsRef,
-          where("userId", "==", user.uid)
+        // 1. Récupérer tous les projets (individuels et d'équipe) de l'utilisateur
+        const userProjectsQuery = query(
+          collection(db, "projects"),
+          where("createdBy", "==", user.uid)
         );
-        const individualProjectsSnapshot = await getDocs(individualProjectsQuery);
-        const individualProjectIds = individualProjectsSnapshot.docs.map(doc => doc.id);
 
-        // 2. Récupérer les projets d'équipe
-        const teamProjectsRef = collection(db, "team");
-        const teamProjectsQuery = query(
-          teamProjectsRef,
-          where("members", "array-contains", user.uid)
+        // 2. Récupérer les projets où l'utilisateur est membre
+        const memberProjectsQuery = query(
+          collection(db, "project_members"),
+          where("userId", "==", user.uid),
+          where("status", "==", "accepted")
         );
-        const teamProjectsSnapshot = await getDocs(teamProjectsQuery);
-        const teamProjectIds = teamProjectsSnapshot.docs.map(doc => doc.id);
+
+        const [userProjectsSnapshot, memberProjectsSnapshot] =
+          await Promise.all([
+            getDocs(userProjectsQuery),
+            getDocs(memberProjectsQuery),
+          ]);
 
         // Combiner tous les IDs de projet
-        const allProjectIds = [...individualProjectIds, ...teamProjectIds];
+        const projectIds = [
+          ...userProjectsSnapshot.docs.map((doc) => doc.id),
+          ...memberProjectsSnapshot.docs.map((doc) => doc.data().projectId),
+        ];
 
-        if (allProjectIds.length > 0) {
+        if (projectIds.length > 0) {
           const tasksRef = collection(db, "tasks");
           const tasksQuery = query(
             tasksRef,
-            where("projectId", "in", allProjectIds)
+            where("projectId", "in", projectIds)
           );
 
           const unsubscribe = onSnapshot(tasksQuery, (snapshot) => {
-            const tasks = snapshot.docs.map(doc => ({
-              id: doc.id,
-              ...doc.data(),
-              dueDate: doc.data().dueDate ? dayjs(doc.data().dueDate) : null
-            }));
+            const tasks = snapshot.docs.map((doc) => {
+              const data = doc.data();
+              return {
+                id: doc.id,
+                ...data,
+                dueDate: data.dueDate ? dayjs(data.dueDate) : null,
+              };
+            });
 
-            const tasksForToday = tasks.filter(task => 
-              task.dueDate && 
-              task.dueDate.isSame(today, 'day') && 
-              !task.completed
+            const today = dayjs().startOf("day");
+
+            // Tâches pour aujourd'hui (non complétées)
+            const tasksForToday = tasks.filter(
+              (task) =>
+                task.dueDate &&
+                task.dueDate.isSame(today, "day") &&
+                !task.completed
             );
 
-            const completedTasksToday = tasks.filter(task => 
-              task.completed && 
-              task.completedAt && 
-              dayjs(task.completedAt).isSame(today, 'day')
+            // Tâches complétées aujourd'hui
+            const completedTasksToday = tasks.filter(
+              (task) =>
+                task.completed &&
+                dayjs(task.completedAt || task.updatedAt).isSame(today, "day")
             );
 
-            const overdueTasks = tasks.filter(task => 
-              task.dueDate && 
-              task.dueDate.isBefore(today, 'day') && 
-              !task.completed
+            // Tâches en retard (non complétées et date dépassée)
+            const overdueTasks = tasks.filter(
+              (task) =>
+                task.dueDate &&
+                task.dueDate.isBefore(today, "day") &&
+                !task.completed
+            );
+
+            console.log(
+              "Tâches complétées aujourd'hui:",
+              completedTasksToday.length
             );
 
             setTasksToday(tasksForToday);
@@ -138,7 +160,9 @@ export default function HomePage() {
             {/* Carte des tâches à faire aujourd'hui */}
             <div className="aspect-video rounded-xl bg-white shadow-md p-4 flex flex-col items-center justify-center">
               <PinIcon color="#4E78F2" className="mb-3" />
-              <h2 className="text-sm font-light mb-2">&Agrave; faire aujourd&apos;hui</h2>
+              <h2 className="text-sm font-light mb-2">
+                &Agrave; faire aujourd&apos;hui
+              </h2>
               <p className="text-2xl font-bold">{tasksToday.length}</p>
             </div>
 

@@ -11,6 +11,7 @@ import {
   where,
   query,
   doc,
+  serverTimestamp 
 } from "firebase/firestore";
 import { UserContext } from "../components/Auth/UserContext";
 import { AppSidebar } from "@/components/Sidebar/AppSidebar";
@@ -75,17 +76,15 @@ export default function ProjectsPage() {
 
     const q = query(
       collection(db, "projects"),
-      where("userId", "==", user.uid)
+      where("type", "==", "individual"), // Ajout du filtre type
+      where("createdBy", "==", user.uid) // Changement de userId à createdBy
     );
-    // Création d'un écouteur en temps réel sur la collection de projets
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      // Transformation des documents Firestore en objets JavaScript
-      const projectList = snapshot.docs.map((doc) => ({
-        id: doc.id, // Récupération de l'ID unique du document
-        ...doc.data(), // Déstructuration des données du document (titre, dates, etc.)
-      }));
 
-      // Mise à jour de l'état React avec la nouvelle liste de projets
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const projectList = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
       setProjects(projectList);
     });
 
@@ -103,25 +102,20 @@ export default function ProjectsPage() {
       setError("Le titre du projet ne peut pas être vide.");
       return;
     }
-    if (projects.some((p) => p.title === newProjectTitle)) {
-      setError("Un projet avec ce titre existe déjà.");
-      return;
-    }
 
     try {
       const docRef = await addDoc(collection(db, "projects"), {
         title: newProjectTitle,
+        type: "individual",
+        createdBy: user.uid, // Changement de userId à createdBy
+        createdAt: serverTimestamp(),
         startDate: new Date().toISOString(),
         endDate: new Date(
           new Date().setDate(new Date().getDate() + 30)
         ).toISOString(),
-        userId: user.uid,
+        status: "active",
       });
 
-      setProjects([
-        ...projects,
-        { id: docRef.id, title: newProjectTitle, userId: user.uid },
-      ]);
       setNewProjectTitle("");
       setError("");
     } catch (error) {
@@ -205,7 +199,6 @@ export default function ProjectsPage() {
   // Fonction pour gérer la fermeture de la boîte de dialogue du wizard
   const handleCloseWizard = () => {
     setIsWizardOpen(false);
-    // Supprimer la navigation vers l'accueil
   };
 
   return (

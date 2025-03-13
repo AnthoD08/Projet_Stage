@@ -1,5 +1,13 @@
 import { useState, useContext } from "react";
-import { UserContext } from "@/components/Auth/UserContext";
+import {
+  collection,
+  query,
+  where,
+  getDocs,
+  addDoc,
+  serverTimestamp,
+} from "firebase/firestore";
+import { db } from "@/config/firebase_config";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -7,94 +15,105 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
 } from "@/components/ui/dialog";
-import { addDoc, collection, query, where, getDocs } from "firebase/firestore";
-import { db, auth } from "@/config/firebase_config";
-import { fetchSignInMethodsForEmail } from 'firebase/auth';
+import { toast } from "sonner";
+import { UserContext } from "../../components/Auth/UserContext";
 
 export function AddTeamMember({ isOpen, onClose, projectId, onMemberAdded }) {
   const { user } = useContext(UserContext);
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e) => {
+  const handleInviteMember = async (e) => {
     e.preventDefault();
+    if (!user) return;
+
     setError("");
-    console.log("Tentative d'ajout de membre:", { email, projectId }); // Debug log
+    setLoading(true);
 
     try {
-      // 1. Vérifier si l'utilisateur existe dans la collection users
+      // Vérifier si l'utilisateur existe
       const usersRef = collection(db, "users");
-      const userQuery = query(usersRef, where("email", "==", email.trim()));
-      const userSnapshot = await getDocs(userQuery);
+      const q = query(usersRef, where("email", "==", email));
+      const userSnapshot = await getDocs(q);
 
       if (userSnapshot.empty) {
-        setError("Aucun utilisateur trouvé avec cette adresse email");
+        setError("Aucun utilisateur trouvé avec cet email");
+        setLoading(false);
         return;
       }
 
-      // 2. Vérifier si l'utilisateur est déjà membre
-      const membersRef = collection(db, "team_members");
-      const memberQuery = query(
-        membersRef,
+      const invitedUser = userSnapshot.docs[0];
+
+      // Vérifier si l'invitation existe déjà
+      const invitationsRef = collection(db, "project_invitations");
+      const inviteQuery = query(
+        invitationsRef,
         where("projectId", "==", projectId),
-        where("email", "==", email.trim())
+        where("userId", "==", invitedUser.id),
+        where("status", "==", "pending")
       );
-      const memberSnapshot = await getDocs(memberQuery);
 
-      if (!memberSnapshot.empty) {
-        setError("Ce membre fait déjà partie du projet");
+      const existingInvite = await getDocs(inviteQuery);
+
+      if (!existingInvite.empty) {
+        setError("Une invitation est déjà en attente pour cet utilisateur");
+        setLoading(false);
         return;
       }
 
-      // 3. Ajouter le nouveau membre sans l'uid
-      const newMember = {
+      // Créer l'invitation
+      await addDoc(collection(db, "project_invitations"), {
         projectId,
-        email: email.trim(),
-        role: "member",
-        status: "pending", // Changed from "active" to "pending"
-        joinedAt: new Date().toISOString(),
-        invitedBy: user.email
-      };
+        userId: invitedUser.id,
+        email: email,
+        status: "pending",
+        createdAt: serverTimestamp(),
+        invitedBy: user.uid,
+      });
 
-      const docRef = await addDoc(collection(db, "team_members"), newMember);
-      console.log("Membre ajouté avec succès, ID:", docRef.id);
+      // Afficher le message de confirmation
+      toast.success("Invitation envoyée", {
+        description: `Une invitation a été envoyée à ${email}`,
+      });
 
       setEmail("");
-      onMemberAdded();
       onClose();
-    } catch (err) {
-      console.error("Erreur détaillée:", err);
-      setError("Erreur lors de l'ajout du membre");
+      onMemberAdded();
+    } catch (error) {
+      console.error("Erreur lors de l'invitation:", error);
+      toast.error("Erreur", {
+        description: "Une erreur est survenue lors de l'envoi de l'invitation",
+      });
     }
+
+    setLoading(false);
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Ajouter un membre</DialogTitle>
+          <DialogTitle>Inviter un membre</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit}>
-          <div className="space-y-4">
-            <div>
-              <Input
-                type="email"
-                placeholder="Adresse email du membre"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
-            </div>
-            {error && <p className="text-red-500 text-sm">{error}</p>}
-          </div>
-          <DialogFooter className="mt-4">
-            <Button type="button" variant="ghost" onClick={onClose}>
+        <form onSubmit={handleInviteMember} className="space-y-4">
+          <Input
+            type="email"
+            placeholder="Adresse email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+          />
+          {error && <p className="text-sm text-red-500">{error}</p>}
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="outline" onClick={onClose}>
               Annuler
             </Button>
-            <Button type="submit">Ajouter</Button>
-          </DialogFooter>
+            <Button type="submit" disabled={loading}>
+              {loading ? "Envoi..." : "Inviter"}
+            </Button>
+          </div>
         </form>
       </DialogContent>
     </Dialog>

@@ -3,7 +3,7 @@ import { collection, query, where, getDocs } from "firebase/firestore";
 import { db } from "@/config/firebase_config";
 import { useEffect, useState } from "react";
 
-export function MemberAvatars({ members, limit = 3 }) {
+export function MemberAvatars({ members = [], limit = 3 }) {
   const [memberDetails, setMemberDetails] = useState([]);
 
   useEffect(() => {
@@ -24,7 +24,10 @@ export function MemberAvatars({ members, limit = 3 }) {
         );
         setMemberDetails(userDetails);
       } catch (error) {
-        console.error("Erreur lors de la récupération des détails des membres:", error);
+        console.error(
+          "Erreur lors de la récupération des détails des membres:",
+          error
+        );
       }
     };
 
@@ -33,11 +36,25 @@ export function MemberAvatars({ members, limit = 3 }) {
     }
   }, [members]);
 
+  // Supprimer les doublons et ajouter un index unique pour la clé
+  const uniqueMembers = [...new Set(memberDetails)];
+
+  // Vérifier si members existe avant de l'utiliser
+  if (!members || members.length === 0) {
+    return null;
+  }
+
   return (
     <div className="flex -space-x-2 overflow-hidden">
-      {memberDetails.slice(0, limit).map((member, index) => (
-        <Avatar key={member.email} className="inline-block h-6 w-6 border-2 border-white">
-          <AvatarImage src={member.photoURL} alt={member.displayName || member.email} />
+      {uniqueMembers.slice(0, limit).map((member, index) => (
+        <Avatar
+          key={`${member.email}-${index}`}
+          className="inline-block h-6 w-6 border-2 border-white"
+        >
+          <AvatarImage
+            src={member.photoURL}
+            alt={member.displayName || member.email}
+          />
           <AvatarFallback>
             {(member.displayName?.[0] || member.email[0]).toUpperCase()}
           </AvatarFallback>
