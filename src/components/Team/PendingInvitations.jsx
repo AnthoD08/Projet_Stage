@@ -39,15 +39,14 @@ export function PendingInvitations() {
         const inviterDoc = await getDoc(doc(db, "users", data.invitedBy));
         const inviterData = inviterDoc.exists() ? inviterDoc.data() : null;
 
+        console.log("Inviter Data:", inviterData); // Log pour vérifier les données récupérées
+
         return {
           id: document.id,
           ...data,
           projectDetails: projectDoc.exists() ? projectDoc.data() : null,
           inviterDetails: {
-            displayName:
-              inviterData?.displayName ||
-              inviterData?.username ||
-              "Utilisateur inconnu",
+            displayName: inviterData?.displayName || "Utilisateur inconnu",
             email: inviterData?.email,
           },
         };
@@ -110,7 +109,7 @@ export function PendingInvitations() {
   };
 
   return (
-    <div className="max-w-md mx-auto space-y-3"> {/* Ajout de max-w-md et mx-auto */}
+    <div className="max-w-md mx-auto space-y-3">
       <h2 className="text-lg font-medium">Invitations en attente</h2>
       {pendingInvites.length > 0 ? (
         pendingInvites.map((invite) => (
@@ -118,26 +117,27 @@ export function PendingInvitations() {
             key={invite.id}
             className="flex items-center justify-between p-2 border rounded-md bg-card shadow-sm hover:shadow-md transition-all"
           >
-            <div className="min-w-0 flex-1 mr-4"> {/* Ajout de min-w-0 et flex-1 */}
+            <div className="min-w-0 flex-1 mr-4">
               <p className="text-sm font-medium truncate">
                 {invite.projectDetails?.title || invite.projectId}
               </p>
               <p className="text-xs text-muted-foreground truncate">
-                Invité par {invite.inviterDetails?.displayName || "Utilisateur inconnu"}
+                Invité par{" "}
+                {invite.inviterDetails?.displayName ?? "Utilisateur inconnu"}
               </p>
             </div>
-            <div className="flex items-center gap-1"> {/* Réduit gap-2 à gap-1 */}
+            <div className="flex items-center gap-1">
               <Button
                 size="sm"
                 variant="ghost"
-                className="px-2 h-8" /* Réduit la taille du bouton */
+                className="px-2 h-8"
                 onClick={() => handleInviteResponse(invite.id, false)}
               >
                 Refuser
               </Button>
               <Button
                 size="sm"
-                className="px-2 h-8" /* Réduit la taille du bouton */
+                className="px-2 h-8"
                 onClick={() => handleInviteResponse(invite.id, true)}
               >
                 Accepter
@@ -146,7 +146,7 @@ export function PendingInvitations() {
           </div>
         ))
       ) : (
-        <p className="text-sm text-muted-foreground text-center"> {/* Ajout de text-center */}
+        <p className="text-sm text-muted-foreground text-center">
           Aucune invitation en attente
         </p>
       )}
