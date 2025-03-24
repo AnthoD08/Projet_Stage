@@ -111,10 +111,7 @@ export default function HomePage() {
                 !task.completed
             );
 
-            console.log(
-              "Tâches complétées aujourd'hui:",
-              completedTasksToday.length
-            );
+         
 
             setTasksToday(tasksForToday);
             setTasksCompletedToday(completedTasksToday);

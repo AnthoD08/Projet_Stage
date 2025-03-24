@@ -147,7 +147,7 @@ const TeamPage = () => {
               }
             });
 
-            console.log("Projets chargés:", allProjects); // Debug
+           
             setTeamProjects(allProjects);
           } catch (error) {
             console.error("Erreur lors de la récupération des projets:", error);

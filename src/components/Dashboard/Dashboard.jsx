@@ -75,7 +75,7 @@ const Dashboard = () => {
         }
 
         setProjectsMap(map);
-        console.log("Projets chargés:", map); // Debug log
+      
       } catch (error) {
         console.error("Erreur lors du chargement des projets:", error);
       }
