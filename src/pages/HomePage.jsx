@@ -111,7 +111,7 @@ export default function HomePage() {
                 !task.completed
             );
 
-         
+          
 
             setTasksToday(tasksForToday);
             setTasksCompletedToday(completedTasksToday);

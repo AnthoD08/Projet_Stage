@@ -1,29 +1,63 @@
 import { useState, useEffect, useContext, useRef } from "react";
-import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
+import {
+  SidebarProvider,
+  SidebarInset,
+  SidebarTrigger,
+} from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/Sidebar/AppSidebar";
-import { Breadcrumb, BreadcrumbItem, BreadcrumbList, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbList,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
 import { Button } from "@/components/ui/button";
 import { Plus, Users, Trash2, UserPlus } from "lucide-react";
-import { collection, query, where, getDocs, addDoc, deleteDoc, doc, updateDoc, getDoc, serverTimestamp, onSnapshot } from "firebase/firestore";
+import {
+  collection,
+  query,
+  where,
+  getDocs,
+  addDoc,
+  deleteDoc,
+  doc,
+  updateDoc,
+  getDoc,
+  serverTimestamp,
+  onSnapshot,
+} from "firebase/firestore";
 import { db } from "../config/firebase_config";
 import { UserContext } from "../components/Auth/UserContext";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import ProjectWizard from "@/components/Projects/ProjectWizard";
 import { AddTeamMember } from "@/components/Team/AddTeamMember";
 import { MemberAvatars } from "@/components/Team/MemberAvatars";
 import { useNavigate } from "react-router-dom";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { LoginForm } from "../components/Auth/LoginForm";
 import { RegisterForm } from "../components/Auth/RegisterForm";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 
 const TeamPage = () => {
-  const unsubscribes = useRef([]); // Référence pour stocker les fonctions de désabonnement
-  const { user } = useContext(UserContext); // Contexte utilisateur
-  const navigate = useNavigate(); // Fonction de navigation
+  const unsubscribes = useRef([]);
+  const { user } = useContext(UserContext);
+  const navigate = useNavigate();
 
-  // États pour gérer l'interface utilisateur et les données
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(true);
   const [authMode, setAuthMode] = useState("login");
@@ -40,16 +74,10 @@ const TeamPage = () => {
   const [projectMembers, setProjectMembers] = useState({});
   const [pendingInvites, setPendingInvites] = useState([]);
 
-  // Effet pour récupérer les projets d'équipe et les invitations en attente lorsque l'utilisateur change
   useEffect(() => {
     if (!user) {
-      // Nettoyer les abonnements si l'utilisateur n'est pas connecté
-      unsubscribes.current.forEach((unsubscribe) => {
-        if (typeof unsubscribe === "function") unsubscribe();
-      });
+      unsubscribes.current.forEach((unsubscribe) => unsubscribe());
       unsubscribes.current = [];
-
-      // Réinitialiser les états
       setTeamProjects([]);
       setProjectMembers({});
       setPendingInvites([]);
@@ -60,14 +88,12 @@ const TeamPage = () => {
     }
   }, [user]);
 
-  // Effet pour récupérer les projets d'équipe lorsque l'assistant de projet est fermé
   useEffect(() => {
     if (isProjectWizardOpen === false) {
       fetchTeamProjects();
     }
   }, [isProjectWizardOpen]);
 
-  // Effet pour charger les membres de tous les projets lorsque les projets d'équipe changent
   useEffect(() => {
     const loadAllProjectsMembers = async () => {
       for (const project of teamProjects) {
@@ -80,27 +106,19 @@ const TeamPage = () => {
     }
   }, [teamProjects]);
 
-  // Fonction pour récupérer les projets d'équipe de l'utilisateur
   const fetchTeamProjects = async () => {
     if (!user) return;
 
     try {
-      // Nettoyer les anciens listeners
-      unsubscribes.current.forEach((unsubscribe) => {
-        if (typeof unsubscribe === "function") {
-          unsubscribe();
-        }
-      });
+      unsubscribes.current.forEach((unsubscribe) => unsubscribe());
       unsubscribes.current = [];
 
-      // Récupérer les projets créés par l'utilisateur
       const createdQuery = query(
         collection(db, "projects"),
         where("type", "==", "team"),
         where("createdBy", "==", user.uid)
       );
 
-      // Récupérer les projets où l'utilisateur est membre
       const memberQuery = query(
         collection(db, "project_members"),
         where("userId", "==", user.uid),
@@ -116,13 +134,11 @@ const TeamPage = () => {
           }
 
           try {
-            // Récupérer les projets créés
             const createdProjects = createdSnapshot.docs.map((doc) => ({
               id: doc.id,
               ...doc.data(),
             }));
 
-            // Récupérer les projets où l'utilisateur est membre
             const memberSnapshot = await getDocs(memberQuery);
             const memberProjectIds = memberSnapshot.docs.map(
               (doc) => doc.data().projectId
@@ -139,7 +155,6 @@ const TeamPage = () => {
               }
             }
 
-            // Combiner les projets uniques
             const allProjects = [...createdProjects];
             memberProjects.forEach((project) => {
               if (!allProjects.some((p) => p.id === project.id)) {
@@ -147,7 +162,6 @@ const TeamPage = () => {
               }
             });
 
-           
             setTeamProjects(allProjects);
           } catch (error) {
             console.error("Erreur lors de la récupération des projets:", error);
@@ -162,7 +176,6 @@ const TeamPage = () => {
     }
   };
 
-  // Effet pour nettoyer les abonnements lorsque le composant est démonté
   useEffect(() => {
     return () => {
       unsubscribes.current.forEach((unsubscribe) => unsubscribe());
@@ -170,21 +183,6 @@ const TeamPage = () => {
     };
   }, []);
 
-  // Effet pour récupérer les projets d'équipe lorsque l'utilisateur change
-  useEffect(() => {
-    if (user) {
-      fetchTeamProjects();
-    }
-  }, [user]);
-
-  // Effet pour récupérer les projets d'équipe lorsque l'assistant de projet est fermé
-  useEffect(() => {
-    if (isProjectWizardOpen === false) {
-      fetchTeamProjects();
-    }
-  }, [isProjectWizardOpen]);
-
-  // Fonction pour créer un nouveau projet
   const handleCreateProject = async (e) => {
     e.preventDefault();
     if (!newProjectName.trim()) return;
@@ -218,7 +216,6 @@ const TeamPage = () => {
     }
   };
 
-  // Fonction pour supprimer un projet
   const handleDeleteProject = async (projectId) => {
     try {
       const membersQuery = query(
@@ -251,19 +248,16 @@ const TeamPage = () => {
     }
   };
 
-  // Fonction pour ouvrir la boîte de dialogue de suppression
   const openDeleteDialog = (project) => {
     setProjectToDelete(project);
     setIsDeleteDialogOpen(true);
   };
 
-  // Fonction pour fermer l'assistant de projet
   const handleWizardClose = () => {
     setIsProjectWizardOpen(false);
     fetchTeamProjects();
   };
 
-  // Fonction pour charger les membres d'un projet
   const loadProjectMembers = async (projectId) => {
     try {
       const membersRef = collection(db, "project_members");
@@ -282,7 +276,6 @@ const TeamPage = () => {
     }
   };
 
-  // Fonction pour récupérer les invitations en attente
   const fetchPendingInvitations = async () => {
     if (!user) return;
 
@@ -299,10 +292,20 @@ const TeamPage = () => {
         snapshot.docs.map(async (document) => {
           const projectRef = doc(db, "projects", document.data().projectId);
           const projectDoc = await getDoc(projectRef);
+
+          const inviterDoc = await getDoc(
+            doc(db, "users", document.data().invitedBy)
+          );
+          const inviterData = inviterDoc.exists() ? inviterDoc.data() : null;
+
           return {
             id: document.id,
             ...document.data(),
             projectDetails: projectDoc.exists() ? projectDoc.data() : null,
+            inviterDetails: {
+              displayName: inviterData?.displayName || "Utilisateur inconnu",
+              email: inviterData?.email,
+            },
           };
         })
       );
@@ -313,7 +316,6 @@ const TeamPage = () => {
     }
   };
 
-  // Fonction pour répondre à une invitation
   const handleInviteResponse = async (inviteId, accept) => {
     try {
       const inviteRef = doc(db, "project_invitations", inviteId);
@@ -330,7 +332,6 @@ const TeamPage = () => {
           joinedAt: serverTimestamp(),
         });
 
-        // Ajouter le projet à la liste des projets de l'utilisateur
         setTeamProjects((prevProjects) => [
           ...prevProjects,
           {
@@ -361,70 +362,6 @@ const TeamPage = () => {
     }
   };
 
-  // Effet pour charger les membres de tous les projets lorsque les projets d'équipe changent
-  useEffect(() => {
-    const loadAllProjectsMembers = async () => {
-      for (const project of teamProjects) {
-        await loadProjectMembers(project.id);
-      }
-    };
-
-    if (teamProjects.length > 0) {
-      loadAllProjectsMembers();
-    }
-  }, [teamProjects]);
-
-  // Effet pour récupérer les projets d'équipe et les invitations en attente lorsque l'utilisateur change
-  useEffect(() => {
-    if (user) {
-      fetchTeamProjects();
-      fetchPendingInvitations();
-    }
-  }, [user]);
-
-  // Effet pour charger les membres de tous les projets lorsque les projets d'équipe changent
-  useEffect(() => {
-    const loadMembers = async () => {
-      for (const project of teamProjects) {
-        await loadProjectMembers(project.id);
-      }
-    };
-
-    if (teamProjects.length > 0) {
-      loadMembers();
-    }
-  }, [teamProjects]);
-
-  // Effet pour récupérer les projets d'équipe et les invitations en attente lorsque l'utilisateur change
-  useEffect(() => {
-    if (!user) {
-      navigate("/accueil");
-      return;
-    }
-
-    fetchTeamProjects();
-    fetchPendingInvitations();
-  }, [user, navigate]);
-
-  // Effet pour nettoyer les abonnements et réinitialiser les états lorsque l'utilisateur change
-  useEffect(() => {
-    if (!user) {
-      unsubscribes.current.forEach((unsubscribe) => {
-        if (typeof unsubscribe === "function") {
-          unsubscribe();
-        }
-      });
-      unsubscribes.current = [];
-
-      setTeamProjects([]);
-      setProjectMembers({});
-      setPendingInvites([]);
-
-      navigate("/accueil");
-    }
-  }, [user, navigate]);
-
-  // Fonction pour rendre les avatars des membres d'un projet
   const renderMemberAvatars = (project) => {
     if (!user) return null;
 
@@ -442,14 +379,12 @@ const TeamPage = () => {
     );
   };
 
-  // Effet pour ouvrir la boîte de dialogue d'authentification si l'utilisateur n'est pas connecté
   useEffect(() => {
     if (!user && !isLoggingOut) {
       setIsDialogOpen(true);
     }
   }, [user, isLoggingOut]);
 
-  // Rendu conditionnel si l'utilisateur n'est pas connecté
   if (!user) {
     return (
       <Dialog
@@ -479,7 +414,6 @@ const TeamPage = () => {
     );
   }
 
-  // Rendu principal de la page d'équipe
   return (
     <SidebarProvider>
       <AppSidebar />
@@ -518,7 +452,7 @@ const TeamPage = () => {
                         {invite.projectDetails.title}
                       </h3>
                       <p className="text-xs text-muted-foreground">
-                        Invité par {invite.invitedBy}
+                        Invité par {invite.inviterDetails.displayName}
                       </p>
                     </div>
                     <div className="flex gap-2 ml-4 shrink-0">

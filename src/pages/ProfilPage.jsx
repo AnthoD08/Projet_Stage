@@ -1,9 +1,10 @@
-// Importation des dépendances nécessaires
 import { useContext, useState, useRef } from "react";
 import { UserContext } from "../components/Auth/UserContext";
 import { auth, storage } from "@/config/firebase_config"; // Importation de Firebase Auth et Storage
 import { updateProfile } from "firebase/auth";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage"; // Importation des fonctions de gestion du stockage
+import { doc, updateDoc } from "firebase/firestore";
+import { db } from "@/config/firebase_config";
 import { Navigate } from "react-router-dom";
 import { AppSidebar } from "@/components/Sidebar/AppSidebar";
 import {
@@ -53,6 +54,14 @@ export default function ProfilePage() {
         displayName,
         photoURL,
       });
+
+      // Mettre à jour le document utilisateur dans Firestore
+      const userDocRef = doc(db, "users", auth.currentUser.uid);
+      await updateDoc(userDocRef, {
+        displayName,
+        photoURL,
+      });
+
       setSuccess(true);
     } catch (err) {
       setError("Erreur lors de la mise à jour du profil.");
@@ -92,6 +101,12 @@ export default function ProfilePage() {
 
       // Mettre à jour le profil utilisateur avec la nouvelle URL de la photo
       await updateProfile(auth.currentUser, {
+        photoURL: downloadURL,
+      });
+
+      // Mettre à jour le document utilisateur dans Firestore
+      const userDocRef = doc(db, "users", auth.currentUser.uid);
+      await updateDoc(userDocRef, {
         photoURL: downloadURL,
       });
 
