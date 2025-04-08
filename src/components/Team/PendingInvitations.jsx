@@ -83,6 +83,7 @@ export function PendingInvitations() {
         });
 
         // 3. Rafraîchir immédiatement les projets
+        // eslint-disable-next-line no-undef
         await fetchTeamProjects();
       } else {
         // Si refusé, mettre à jour uniquement le statut
@@ -93,6 +94,7 @@ export function PendingInvitations() {
       }
 
       // 4. Rafraîchir les invitations
+      // eslint-disable-next-line no-undef
       await fetchPendingInvitations();
 
       toast.success(accept ? "Invitation acceptée" : "Invitation refusée", {
