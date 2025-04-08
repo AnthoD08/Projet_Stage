@@ -36,6 +36,7 @@ import {
   AlertDialogCancel,
   AlertDialogAction,
 } from "@/components/ui/alert-dialog";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
 const Dashboard = () => {
   const { projectId } = useParams();
@@ -46,16 +47,17 @@ const Dashboard = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [showAddTaskForm, setShowAddTaskForm] = useState(false);
   const [taskToDelete, setTaskToDelete] = useState(null);
+  const [projectMembers, setProjectMembers] = useState([]);
+  const [selectedMember, setSelectedMember] = useState("");
+  const [isTeamProject, setIsTeamProject] = useState(false);
 
   const ensureTasksCollection = async () => {
     try {
-      // Vérifier si la collection tasks existe
       const tasksCollection = collection(db, "tasks");
       await addDoc(tasksCollection, {
         _dummy: true,
         createdAt: new Date().toISOString(),
       });
-      // Supprimer immédiatement le document dummy
       const dummyQuery = query(tasksCollection, where("_dummy", "==", true));
       const snapshot = await getDocs(dummyQuery);
       snapshot.docs.forEach(async (doc) => {
@@ -73,7 +75,6 @@ const Dashboard = () => {
   useEffect(() => {
     if (!projectId) return;
 
-    // Initialiser la collection tasks si nécessaire
     ensureTasksCollection();
 
     const q = query(
@@ -86,9 +87,38 @@ const Dashboard = () => {
           id: docSnap.id,
           ...docSnap.data(),
         }))
-        .filter((task) => !task._dummy); // Filtrer le document dummy si présent
+        .filter((task) => !task._dummy);
       setTasks(tasksData);
     });
+
+    const checkProjectType = async () => {
+      try {
+        const projectDoc = await getDoc(doc(db, "projects", projectId));
+        if (projectDoc.exists() && projectDoc.data().type === "team") {
+          setIsTeamProject(true);
+          const membersQuery = query(
+            collection(db, "project_members"),
+            where("projectId", "==", projectId),
+            where("status", "==", "accepted")
+          );
+          const membersSnap = await getDocs(membersQuery);
+          setProjectMembers(
+            membersSnap.docs.map((doc) => ({
+              id: doc.id,
+              ...doc.data(),
+            }))
+          );
+        }
+      } catch (error) {
+        console.error(
+          "Erreur lors de la vérification du type de projet:",
+          error
+        );
+      }
+    };
+
+    checkProjectType();
+
     return () => unsubscribe();
   }, [projectId]);
 
@@ -97,7 +127,6 @@ const Dashboard = () => {
       return;
 
     try {
-      // Assurer que la collection existe avant d'ajouter une tâche
       await ensureTasksCollection();
 
       await addDoc(collection(db, "tasks"), {
@@ -108,11 +137,14 @@ const Dashboard = () => {
         projectId: projectId,
         completed: false,
         createdAt: new Date().toISOString(),
+        assignedTo: selectedMember || null,
+        assignedAt: selectedMember ? new Date().toISOString() : null,
       });
 
       setNewTaskTitle("");
       setNewDueDate("");
       setNewPriority("Moyenne");
+      setSelectedMember("");
       setShowAddTaskForm(false);
     } catch (error) {
       console.error("Erreur lors de l'ajout de la tâche :", error);
@@ -147,7 +179,6 @@ const Dashboard = () => {
 
   return (
     <div className="p-4 min-h-screen space-y-6">
-      {/* Bloc 1 : Formulaire d'ajout */}
       <div className="p-4 bg-white rounded shadow">
         <Button
           variant="outline"
@@ -199,6 +230,25 @@ const Dashboard = () => {
                   <option value="Haute">🔴 Haute</option>
                 </select>
               </div>
+              {isTeamProject && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Assigner à
+                  </label>
+                  <select
+                    value={selectedMember}
+                    onChange={(e) => setSelectedMember(e.target.value)}
+                    className="border p-2 rounded w-full"
+                  >
+                    <option value="">Non assigné</option>
+                    {projectMembers.map((member) => (
+                      <option key={member.id} value={member.email}>
+                        {member.email}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </div>
             <div className="flex justify-end space-x-2">
               <Button
@@ -215,7 +265,6 @@ const Dashboard = () => {
         )}
       </div>
 
-      {/* Bloc 2 : Barre de recherche */}
       <div className="p-4 bg-white rounded shadow">
         <input
           type="text"
@@ -226,15 +275,15 @@ const Dashboard = () => {
         />
       </div>
 
-      {/* Bloc 3 : Liste des tâches */}
       <div className="p-4 bg-white shadow-md rounded-lg">
-        <h2 className="text-xl font-semibold mb-4">Toutes mes tâches</h2>
+        <h2 className="text-xl font-semibold mb-4">Toutes les tâches</h2>
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead>Titre</TableHead>
               <TableHead>Priorité</TableHead>
               <TableHead>Date limite</TableHead>
+              {isTeamProject && <TableHead>Assigné à</TableHead>}
               <TableHead></TableHead>
             </TableRow>
           </TableHeader>
@@ -249,7 +298,6 @@ const Dashboard = () => {
                         toggleTaskCompletion(task.id, task.completed)
                       }
                     />
-
                     <span className="font-medium">{task.title}</span>
                   </div>
                 </TableCell>
@@ -269,6 +317,25 @@ const Dashboard = () => {
                 <TableCell>
                   {dayjs(task.dueDate).format("DD/MM/YYYY")}
                 </TableCell>
+                {isTeamProject && (
+                  <TableCell>
+                    {task.assignedTo && (
+                      <Avatar className="h-6 w-6">
+                        <AvatarImage
+                          src={
+                            projectMembers.find(
+                              (m) => m.email === task.assignedTo
+                            )?.photoURL
+                          }
+                          alt={task.assignedTo}
+                        />
+                        <AvatarFallback>
+                          {task.assignedTo[0].toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                    )}
+                  </TableCell>
+                )}
                 <TableCell>
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
